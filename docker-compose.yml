@@ -1,0 +1,48 @@
+services:
+  postgres:
+    image: postgres:14.11
+    environment:
+      - POSTGRES_DB=grafana-ai-training-metadata
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./ai-training-metadata/postgres/init:/docker-entrypoint-initdb.d/
+
+  grafana:
+    container_name: grafana-aitraining-app
+    image: grafana/grafana-oss:10.4.1
+    volumes:
+      - ./.config/grafana/config:/etc/grafana-config
+      # We don't need these for now, but they are useful for provisioning
+      - ./.config/grafana/datasources:/etc/grafana/provisioning/datasources
+      # - ./grafana/dashboards-provisioning:/etc/grafana/provisioning/dashboards
+      # - ./grafana/dashboards:/var/lib/grafana/dashboards
+    command: > # This injects the autoreload script from the plugin into the index.html file
+      sh -c "sed -i 's/<\/body><\/html>/<script src=\"http:\/\/localhost:35729\/livereload.js\"><\/script><\/body><\/html>/g' /usr/share/grafana/public/views/index.html && /run.sh"
+    ports:
+      - "3000:3000"
+
+  # These are presently copied from the grafana agent config, and will need work to make sure they initialize well
+  # loki:
+  #   image: grafana/loki:2.8.3
+  #   command: -config.file=/etc/loki/local-config.yaml
+  #   ports:
+  #     - "3100:3100"
+
+  # mimir:
+  #   image: grafana/mimir:2.9.0
+  #   volumes:
+  #     - ./mimir/config:/etc/mimir-config
+  #   entrypoint:
+  #     - /bin/mimir
+  #     - -config.file=/etc/mimir-config/mimir.yaml
+  #   ports:
+  #     - "9009:9009"
+
+# Ensures data is persisted across container restarts
+volumes:
+  postgres_data:
