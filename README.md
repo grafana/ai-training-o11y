@@ -11,8 +11,13 @@ ai-training-observability/ contains the grafana plugin, or will once i move it o
 todo:
 
 [ ] flesh out the design on the postgres tables regarding process + run tracking
+
 [ ] dummy/basic workflows in the exporter to solidify what that flow looks like
+
 [ ] initialize the metadata service
+
 [ ] make a run work entirely between the metadata service and the exporter
+
 [ ] make sure the plugin can connect to the metadata service, and especially can give back a login string to the user
+
 [ ] dataviz stuff
