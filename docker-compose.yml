@@ -15,10 +15,13 @@ services:
   grafana:
     container_name: grafana-aitraining-app
     image: grafana/grafana-oss:10.4.1
+    environment:
+      - GF_DEFAULT_APP_MODE=development # Ideally this should be moved to grafana.ini
     volumes:
+      - ./grafana-aitraining-app/dist:/var/lib/grafana/plugins/grafana-aitraining-app
       - ./.config/grafana/config:/etc/grafana-config
-      # We don't need these for now, but they are useful for provisioning
       - ./.config/grafana/datasources:/etc/grafana/provisioning/datasources
+      # We don't need these for now, but may want to provision dashboards for the dev env later
       # - ./grafana/dashboards-provisioning:/etc/grafana/provisioning/dashboards
       # - ./grafana/dashboards:/var/lib/grafana/dashboards
     command: > # This injects the autoreload script from the plugin into the index.html file
