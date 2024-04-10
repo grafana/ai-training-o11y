@@ -26,22 +26,21 @@ services:
     ports:
       - "3000:3000"
 
-  # These are presently copied from the grafana agent config, and will need work to make sure they initialize well
-  # loki:
-  #   image: grafana/loki:2.8.3
-  #   command: -config.file=/etc/loki/local-config.yaml
-  #   ports:
-  #     - "3100:3100"
+  loki:
+    image: grafana/loki:3.0.0
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
 
-  # mimir:
-  #   image: grafana/mimir:2.9.0
-  #   volumes:
-  #     - ./mimir/config:/etc/mimir-config
-  #   entrypoint:
-  #     - /bin/mimir
-  #     - -config.file=/etc/mimir-config/mimir.yaml
-  #   ports:
-  #     - "9009:9009"
+  mimir:
+    image: grafana/mimir:2.11.0
+    volumes:
+      - ./.config/mimir/config:/etc/mimir-config
+    entrypoint:
+      - /bin/mimir
+      - -config.file=/etc/mimir-config/mimir.yml
+    ports:
+      - "9009:9009"
 
 # Ensures data is persisted across container restarts
 volumes:
