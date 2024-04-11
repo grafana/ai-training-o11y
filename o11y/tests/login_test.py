@@ -1,4 +1,4 @@
-from observability import login
+from o11y import login
 
 def test_login_successful():
     login_string = "3cfa8b505c2a2a2e2b54bb6081c8d9fcefd5b836@example.grafana.com"
