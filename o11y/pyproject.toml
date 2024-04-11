@@ -1,13 +1,12 @@
 [tool.poetry]
-name = "observability"
+name = "o11y"
 version = "0.1.0"
-description = ""
+description = "Exporter for Grafana's AI Observability platform"
 authors = ["Aaron Sanders <aaron.sanders@grafana.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.10"
-
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"
