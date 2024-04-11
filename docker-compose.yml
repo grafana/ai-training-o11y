@@ -1,17 +1,4 @@
 services:
-  postgres:
-    image: postgres:14.11
-    environment:
-      - POSTGRES_DB=grafana-ai-training-metadata
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=password
-      - POSTGRES_HOST_AUTH_METHOD=trust
-    ports:
-      - 5432:5432
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./ai-training-metadata/postgres/init:/docker-entrypoint-initdb.d/
-
   grafana:
     container_name: grafana-aitraining-app
     image: grafana/grafana-oss:10.4.1
@@ -44,6 +31,19 @@ services:
       - -config.file=/etc/mimir-config/mimir.yml
     ports:
       - "9009:9009"
+
+  postgres:
+    image: postgres:14.11
+    environment:
+      - POSTGRES_DB=grafana-ai-training-metadata
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_HOST_AUTH_METHOD=trust
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./ai-training-api/postgres/init:/docker-entrypoint-initdb.d/
 
 # Ensures data is persisted across container restarts
 volumes:
