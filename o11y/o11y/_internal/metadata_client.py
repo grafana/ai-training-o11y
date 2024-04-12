@@ -17,7 +17,7 @@ class MetadataClient:
     
     def set_credentials(self, login_string):
         if not login_string or type(login_string) != str:
-            logger.error("No login string provided")
+            logger.error("No login string provided, please set GF_AI_TRAINING_CREDS environment variable")
             return False
         # Count @ characters in the login string, should be 1
         if login_string.count("@") != 1:

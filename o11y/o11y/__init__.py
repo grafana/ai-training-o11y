@@ -1,12 +1,7 @@
 # __init__.py
 import logging
 
-from exported.init import init
-from exported.log import log
-from exported.finish import finish
-from _internal import MetadataClient
-
-# Create a logger
+# Create logger first, all other modules will use this logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -21,7 +16,13 @@ ch.setFormatter(formatter)
 # Add ch to logger
 logger.addHandler(ch)
 
+# Everything else depends on the metadata client, so we import it here
+from ._internal.metadata_client import MetadataClient
 metadata_client = MetadataClient()
+
+from .exported.init import init
+# from .exported.log import log
+# from .exported.finish import finish
 
 __all__ = [
     'init',
