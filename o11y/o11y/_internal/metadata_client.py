@@ -38,7 +38,10 @@ class MetadataClient:
         self.token = token
         return True
 
-    # Function for calling an endpoint as documented here:
+    # Returns a boolean indicating if the process was successfully registered
+    # POST /api/v1/process/new
+    # Takes a JSON object with a key “user_metadata” containing a dictionary of metadata
+    # Returns a JSON object with a key “process_uuid” containing the UUID of the process
     def register_process(self, user_metadata):
         headers = {
             'Authorization': f'Bearer {self.token}',
