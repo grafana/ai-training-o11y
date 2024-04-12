@@ -1,0 +1,69 @@
+{
+  "$schema": "https://raw.githubusercontent.com/grafana/grafana/main/docs/sources/developers/plugins/plugin.schema.json",
+  "type": "app",
+  "name": "AI Observability",
+  "id": "gtm-aiobservability-app",
+  "backend": true,
+  "executable": "gpx_ai_observability",
+  "info": {
+    "keywords": ["app"],
+    "description": "All in one ai suite",
+    "author": {
+      "name": "Gtm"
+    },
+    "logos": {
+      "small": "img/logo.svg",
+      "large": "img/logo.svg"
+    },
+    "screenshots": [],
+    "version": "%VERSION%",
+    "updated": "%TODAY%"
+  },
+  "includes": [
+
+    {
+      "type": "page",
+      "name": "ML Frameworks",
+      "path": "/a/%PLUGIN_ID%/ml",
+      "role": "Admin",
+      "addToNav": true,
+      "defaultNav": false
+    },
+    {
+      "type": "page",
+      "name": "Infrastructure",
+      "path": "/a/%PLUGIN_ID%/infra",
+      "role": "Admin",
+      "addToNav": true,
+      "defaultNav": false
+    },
+    {
+      "type": "page",
+      "name": "Vector Databases",
+      "path": "/a/%PLUGIN_ID%/vectordb",
+      "role": "Admin",
+      "addToNav": true,
+      "defaultNav": false
+    },
+    {
+      "type": "page",
+      "name": "LLM",
+      "path": "/a/%PLUGIN_ID%/llm",
+      "role": "Admin",
+      "addToNav": true,
+      "defaultNav": false
+    },
+    {
+      "type": "page",
+      "icon": "cog",
+      "name": "Configuration",
+      "path": "/plugins/%PLUGIN_ID%",
+      "role": "Admin",
+      "addToNav": true
+    }
+  ],
+  "dependencies": {
+    "grafanaDependency": ">=10.3.3",
+    "plugins": []
+  }
+}
