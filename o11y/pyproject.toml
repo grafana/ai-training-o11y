@@ -9,6 +9,7 @@ readme = "README.md"
 python = "^3.10"
 validators = "^0.28.0"
 requests = "^2.31.0"
+pydantic = "^2.7.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.1.1"

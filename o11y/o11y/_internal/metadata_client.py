@@ -52,7 +52,7 @@ class MetadataClient:
         }
         response = requests.post(f'{self.url}/api/v1/process/new', headers=headers, data=json.dumps(data))
         if response.status_code != 200:
-            logging.error(f'Failed to register process: {response.text}')
+            logging.error(f'Failed to register with error: {response.text}')
             return False
         process_uuid = response.json()['process_uuid']
         self.process_uuid = process_uuid
