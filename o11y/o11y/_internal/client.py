@@ -69,10 +69,11 @@ class Client:
         self.user_metadata = user_metadata
         self.custom_logger.addHandler(
             logging_loki.LokiHandler(
-                url=self.url,
+                url=f"{self.url}/api/v1/process/{self.process_uuid}/user-data",
                 tags={
                     # This specific label guarantees that these logs never collide with anything not from this exporter
                     "grafana-aitraining-o11y-process-uuid": self.process_uuid,
+                    "log-type": "custom",
                 },
                 # The LokiHandler doesn't currently allow the use of token auth, we're going to have to add it
                 # or write our own handler, which seems a lot less elegant
@@ -86,6 +87,7 @@ class Client:
     # Update user_metadata information
     def update_metadata(self, process_uuid, user_metadata):
         if not process_uuid:
+            logging.error("No process registered, unable to update metadata")
             return False
         headers = {
             'Authorization': f'Bearer {self.token}',
@@ -105,6 +107,7 @@ class Client:
     # Options are “succeeded” and “failed”
     def report_state(self, state):
         if not self.process_uuid:
+            logging.error("No process registered, unable to report state")
             return False
         headers = {
             'Authorization': f'Bearer {self.token}',
