@@ -17,8 +17,8 @@ ch.setFormatter(formatter)
 logger.addHandler(ch)
 
 # Everything else depends on the metadata client, so we import it here
-from ._internal.metadata_client import MetadataClient
-metadata_client = MetadataClient()
+from ._internal.client import Client
+client = Client()
 
 from .exported.init import init
 # from .exported.log import log

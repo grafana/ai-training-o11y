@@ -1,6 +1,6 @@
 from typing import Dict, Optional
-from pydantic import BaseModel, ValidateError
-from .. import metadata_client
+from pydantic import BaseModel, ValidationError
+from .. import client
 from .. import logger
 
 # The api itself only takes one argument, a "user_metadata" argument
@@ -10,7 +10,7 @@ class APIRequest(BaseModel):
     run: Optional[str]
     user_metadata: Dict[str, str]
 
-def init(*, project="Default", run=None, metadata=None):
+def init(*, project=None, run=None, metadata=None):
     """
     Initializes the logging client. This should be called at the beginning of the script.
     :param project: The project name
@@ -18,14 +18,23 @@ def init(*, project="Default", run=None, metadata=None):
     :param user_metadata: Any user metadata to attach to the run
     :return: None
     """
-    data: APIRequest = {
-        "project": project,
+    data = {
         "user_metadata": metadata,
     }
+    if project:
+        data["project"] = project
+    else:
+        logger.warning("No project name provided, will be logged to project 'Default'.")
     if run:
         data["run"] = run
 
-    success = metadata_client.register_process(data)
+    try:
+        data = APIRequest(**data)
+    except ValidationError as e:
+        logger.error(f"Invalid metadata: {e}")
+        return False
+
+    success = client.register_process(data)
     if not success:
         logger.error("Initialization failed, logs will NOT be sent.")
         return False

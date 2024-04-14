@@ -6,13 +6,17 @@ import json
 import logging
 import os
 import validators
+import logging_loki
+import logging
 from .. import logger
 
-class MetadataClient:
+
+class Client:
     def __init__(self):
         # We are going to assume that the user has set the credentials in the environment
         # There are other flows but it's the easiest one
         login_string = os.environ.get('GF_AI_TRAINING_CREDS')
+        self.custom_logger = logging.getLogger(__name__ + "-ai-training-o11y-client")
         self.set_credentials(login_string)
     
     def set_credentials(self, login_string):
@@ -43,6 +47,12 @@ class MetadataClient:
     # Takes a JSON object with a key “user_metadata” containing a dictionary of metadata
     # Returns a JSON object with a key “process_uuid” containing the UUID of the process
     def register_process(self, user_metadata):
+        # If the process is currently registered, clear everything from it
+        if self.process_uuid:
+            self.process_uuid = None
+            self.user_metadata = None
+            self.custom_logger.handlers.clear()
+
         headers = {
             'Authorization': f'Bearer {self.token}',
             'Content-Type': 'application/json'
@@ -57,6 +67,20 @@ class MetadataClient:
         process_uuid = response.json()['process_uuid']
         self.process_uuid = process_uuid
         self.user_metadata = user_metadata
+        self.custom_logger.addHandler(
+            logging_loki.LokiHandler(
+                url=self.url,
+                tags={
+                    # This specific label guarantees that these logs never collide with anything not from this exporter
+                    "grafana-aitraining-o11y-process-uuid": self.process_uuid,
+                },
+                # The LokiHandler doesn't currently allow the use of token auth, we're going to have to add it
+                # or write our own handler, which seems a lot less elegant
+                # We definitely shouldn't use the (supported) basic auth because it's a bad pattern
+                #auth= "Bearer " + self.token,
+                version="1",
+            )
+        )
         return True
     
     # Update user_metadata information
@@ -93,4 +117,11 @@ class MetadataClient:
         if response.status_code != 200:
             logging.error(f'Failed to report state: {response.text}')
             return False
+        return True
+    
+    def send_log(self, log):
+        if not self.process_uuid:
+            logging.error("No process registered, unable to send logs")
+            return False
+        self.custom_logger.log(log)
         return True
