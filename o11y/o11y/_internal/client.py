@@ -69,7 +69,7 @@ class Client:
         self.user_metadata = user_metadata
         self.custom_logger.addHandler(
             logging_loki.LokiHandler(
-                url=f"{self.url}/api/v1/process/{self.process_uuid}/user-data",
+                url=f"{self.url}/api/v1/process/{self.process_uuid}/model-metrics",
                 tags={
                     # This specific label guarantees that these logs never collide with anything not from this exporter
                     "grafana-aitraining-o11y-process-uuid": self.process_uuid,
