@@ -9,7 +9,9 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	dskit_log "github.com/grafana/dskit/log"
 	"github.com/grafana/dskit/server"
+	"github.com/prometheus/common/promlog"
 	"gorm.io/gorm"
 
 	db "github.com/grafana/ai-o11y/metadata-service/internal"
@@ -32,7 +34,10 @@ type App struct {
 	logger log.Logger
 }
 
-func New(listenAddress *string, databaseAddress *string, databaseType *string, logger log.Logger) (*App, error) {
+func New(listenAddress *string, listenPort *int, databaseAddress *string, databaseType *string, promlogConfig *promlog.Config) (*App, error) {
+	// Initialize observability constructs.
+	logger := promlog.New(promlogConfig)
+
 	if logger == nil {
 		logger = log.NewNopLogger()
 	}
@@ -45,9 +50,13 @@ func New(listenAddress *string, databaseAddress *string, databaseType *string, l
 	}
 
 	// Create server and router.
+	serverLogLevel := dskit_log.Level{}
+	serverLogLevel.Set(promlogConfig.Level.String())
 	s, err := server.New(server.Config{
 		MetricsNamespace:  metricsNamespace,
 		HTTPListenAddress: *listenAddress,
+		HTTPListenPort:    *listenPort,
+		LogLevel:          serverLogLevel,
 	})
 	if err != nil {
 		level.Error(logger).Log("msg", "error creating server", "err", err)

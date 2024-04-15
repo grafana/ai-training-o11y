@@ -1,0 +1,4 @@
+# This file will ensure all other files in this folder other than itself are ignored by git
+# The folder is primarily used for built artifacts. Check Makefile for info.
+*
+!.gitignore

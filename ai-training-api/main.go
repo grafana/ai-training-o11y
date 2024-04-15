@@ -3,14 +3,15 @@ package main
 import (
 	"os"
 
-	"github.com/alecthomas/kingpin"
-	"github.com/go-kit/log/level"
-	app "github.com/grafana/ai-o11y/metadata-service/app"
-	db "github.com/grafana/ai-o11y/metadata-service/internal"
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/prometheus/client_golang/prometheus"
 	collector_version "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/common/promlog"
+	"github.com/prometheus/common/promlog/flag"
 	"github.com/prometheus/common/version"
+
+	app "github.com/grafana/ai-o11y/metadata-service/app"
+	db "github.com/grafana/ai-o11y/metadata-service/internal"
 )
 
 // Version is set via build flag -ldflags -X main.Version
@@ -41,11 +42,15 @@ func run() int {
 		listenAddress = kingpin.Flag(
 			"web.listen-address",
 			"Address on which to expose metrics and web interface.",
-		).Default(":4032").String()
+		).Default("0.0.0.0").String()
+		listenPort = kingpin.Flag(
+			"web.listen-port",
+			"Port on which to expose metrics and web interface.",
+		).Default("4032").Int()
 		databaseAddress = kingpin.Flag(
 			"database-address",
 			"Database connection string.",
-		).Default("file:sift.db?mode=memory&cache=shared").String()
+		).Default("file:aitraining.db?mode=memory&cache=shared").String()
 		databaseType = kingpin.Flag(
 			"database-type",
 			"Database type.",
@@ -64,17 +69,13 @@ func run() int {
 	kingpin.CommandLine.DefaultEnvars()
 
 	promlogConfig := &promlog.Config{}
-	// flag.AddFlags(kingpin.CommandLine, promlogConfig)
+	flag.AddFlags(kingpin.CommandLine, promlogConfig)
 	kingpin.Version(version.Print("metadata-service"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	// Initialize observability constructs.
-	logger := promlog.New(promlogConfig)
-
-	_, err := app.New(listenAddress, databaseAddress, databaseType, logger)
+	_, err := app.New(listenAddress, listenPort, databaseAddress, databaseType, promlogConfig)
 	if err != nil {
-		level.Error(logger).Log("error creating app: %v", err)
 		return 1
 	}
 
