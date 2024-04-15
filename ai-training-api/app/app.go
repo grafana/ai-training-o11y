@@ -34,7 +34,7 @@ type App struct {
 	logger log.Logger
 }
 
-func New(listenAddress *string, listenPort *int, databaseAddress *string, databaseType *string, promlogConfig *promlog.Config) (*App, error) {
+func New(listenAddress *string, listenPort *int, databaseAddress *string, databaseType *string, constTenant *string, promlogConfig *promlog.Config) (*App, error) {
 	// Initialize observability constructs.
 	logger := promlog.New(promlogConfig)
 
@@ -73,6 +73,7 @@ func New(listenAddress *string, listenPort *int, databaseAddress *string, databa
 
 	// Register all API routes.
 	router := a.server.HTTP.PathPrefix("/api/v1").Subrouter()
+	router.Use(middleware.AuthnMiddleware(*constTenant))
 	a.registerAPI(router)
 
 	// Start the server.

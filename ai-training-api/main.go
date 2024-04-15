@@ -55,10 +55,10 @@ func run() int {
 			"database-type",
 			"Database type.",
 		).Default(db.SQLite).Enum(db.SQLite, db.MySQL)
-		// constTenant = kingpin.Flag(
-		// 	"const-tenant",
-		// 	"A constant tenant to add to every request. Should only be used in development.",
-		// ).String()
+		constTenant = kingpin.Flag(
+			"const-tenant",
+			"A constant tenant to add to every request. Should only be used in development.",
+		).String()
 		// tenantOverridesFile = kingpin.Flag(
 		// 	"tenant-overrides-file",
 		// 	"Path to YAML file containing overrides per tenant.",
@@ -74,7 +74,7 @@ func run() int {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	_, err := app.New(listenAddress, listenPort, databaseAddress, databaseType, promlogConfig)
+	_, err := app.New(listenAddress, listenPort, databaseAddress, databaseType, constTenant, promlogConfig)
 	if err != nil {
 		return 1
 	}
