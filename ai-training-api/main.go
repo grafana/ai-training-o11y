@@ -10,8 +10,8 @@ import (
 	"github.com/prometheus/common/promlog/flag"
 	"github.com/prometheus/common/version"
 
-	app "github.com/grafana/ai-o11y/metadata-service/app"
-	db "github.com/grafana/ai-o11y/metadata-service/internal"
+	app "github.com/grafana/ai-training-o11y/ai-training-api/app"
+	db "github.com/grafana/ai-training-o11y/ai-training-api/internal"
 )
 
 // Version is set via build flag -ldflags -X main.Version
@@ -25,7 +25,7 @@ func init() {
 	version.Version = Version
 	version.Branch = Branch
 	version.Revision = Revision
-	prometheus.MustRegister(collector_version.NewCollector("metadata_service"))
+	prometheus.MustRegister(collector_version.NewCollector("ai_training_api"))
 }
 
 // initialise mux router
@@ -34,7 +34,7 @@ func main() {
 	os.Exit(run())
 }
 
-// run is the main entry point for the metadata-service.
+// run is the main entry point for the ai-training-api.
 // It initializes the database connection, creates the server and router.
 // It also returns the exit code.
 func run() int {
@@ -70,7 +70,7 @@ func run() int {
 
 	promlogConfig := &promlog.Config{}
 	flag.AddFlags(kingpin.CommandLine, promlogConfig)
-	kingpin.Version(version.Print("metadata-service"))
+	kingpin.Version(version.Print("ai-training-api"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 

@@ -45,7 +45,7 @@ RUN apt-get update && apt-get -y install ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --link --from=build \
-  go/src/ai-training-api/dist/metadata-service \
+  go/src/ai-training-api/dist/ai-training-api \
   /usr/local/bin/
 
-ENTRYPOINT ["/usr/local/bin/metadata-service"]
+ENTRYPOINT ["/usr/local/bin/ai-training-api"]

@@ -14,13 +14,13 @@ import (
 	"github.com/prometheus/common/promlog"
 	"gorm.io/gorm"
 
-	db "github.com/grafana/ai-o11y/metadata-service/internal"
-	"github.com/grafana/ai-o11y/metadata-service/middleware"
-	"github.com/grafana/ai-o11y/metadata-service/model"
+	db "github.com/grafana/ai-training-o11y/ai-training-api/internal"
+	"github.com/grafana/ai-training-o11y/ai-training-api/middleware"
+	"github.com/grafana/ai-training-o11y/ai-training-api/model"
 )
 
 const (
-	metricsNamespace = "ai_o11y_metadata_service"
+	metricsNamespace = "ai_o11y_training_api"
 )
 
 // App is the main application struct.
