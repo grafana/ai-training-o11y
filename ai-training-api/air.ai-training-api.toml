@@ -9,7 +9,7 @@ tmp_dir = "tmp"
 # Just plain old shell command. You could use `make` as well.
 cmd = "BUILD_VERSION=$(cat .git_version) BUILD_COMMIT=$(cat .git_commit) BUILD_BRANCH=$(cat .git_branch) make exe"
 # Customize binary.
-full_bin = "./dist/metadata-service --log.level=debug --const-tenant=0 --database-type=mysql --database-address='user:pass@tcp(db:3306)/aitraining?charset=utf8mb4&parseTime=True&loc=Local'"
+full_bin = "./dist/ai-training-api --log.level=debug --const-tenant=0 --database-type=mysql --database-address='user:pass@tcp(db:3306)/aitraining?charset=utf8mb4&parseTime=True&loc=Local'"
 # Watch these filename extensions.
 include_ext = ["go"]
 # Ignore these filename extensions or directories.
