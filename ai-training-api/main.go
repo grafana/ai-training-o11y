@@ -46,7 +46,7 @@ func run() int {
 		listenPort = kingpin.Flag(
 			"web.listen-port",
 			"Port on which to expose metrics and web interface.",
-		).Default("4032").Int()
+		).Default("8000").Int()
 		databaseAddress = kingpin.Flag(
 			"database-address",
 			"Database connection string.",
@@ -74,7 +74,7 @@ func run() int {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	_, err := app.New(listenAddress, listenPort, databaseAddress, databaseType, constTenant, promlogConfig)
+	_, err := app.New(*listenAddress, *listenPort, *databaseAddress, *databaseType, *constTenant, promlogConfig)
 	if err != nil {
 		return 1
 	}
