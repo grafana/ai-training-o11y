@@ -1,4 +1,4 @@
-# ai-training-observability
+# AI Training Observability
 
 Layout is as follows:
 
