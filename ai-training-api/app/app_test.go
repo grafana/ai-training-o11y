@@ -6,7 +6,6 @@ import (
 	"io"
 	"net/http"
 	"path/filepath"
-	"strconv"
 	"testing"
 	"time"
 
@@ -22,15 +21,11 @@ import (
 
 const (
 	listenAddress = "localhost"
-	listenPort    = 8000
+	listenPort    = 0
 
 	sampleProcessJSON = `{
 		"name": "Test Process"
 	}`
-)
-
-var (
-	apiEndpointPrefix = "http://" + listenAddress + ":" + strconv.Itoa(listenPort) + "/api/v1"
 )
 
 type createProcessResponse struct {
@@ -72,7 +67,8 @@ func TestAppCreatesNewProcess(t *testing.T) {
 	require.NotNil(t, testApp)
 
 	httpC := newHTTPClient(t.Name())
-	resp, err := httpC.Post(apiEndpointPrefix+"/process/new", "application/json", bytes.NewBufferString(sampleProcessJSON))
+	registerProcessEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/process/new"
+	resp, err := httpC.Post(registerProcessEndpoint, "application/json", bytes.NewBufferString(sampleProcessJSON))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
