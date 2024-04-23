@@ -67,7 +67,7 @@ services:
     image: quay.io/jupyter/pytorch-notebook:cuda12-python-3.11.8
     command: "start-notebook.py --NotebookApp.token=\\'\\' --NotebookApp.password=\\'\\'"
     volumes:
-      - .:/home/jovyan/work
+      - ./o11y:/home/jovyan/
     ports:
       - "8888:8888"
 
