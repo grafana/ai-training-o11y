@@ -188,6 +188,8 @@ github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a h1:bbPeKD0xmW/
 github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a/go.mod h1:5TJZWKEWniPve33vlWYSoGYefn3gLQRzjfDlhSJ9ZKM=
 github.com/jackc/pgx/v5 v5.3.0 h1:/NQi8KHMpKWHInxXesC8yD4DhkXPrVhmnwYkjp9AmBA=
 github.com/jackc/pgx/v5 v5.3.0/go.mod h1:t3JDKnCBlYIc0ewLF0Q7B8MXmoIaBOZj/ic7iHozM/8=
+github.com/jeremywohl/flatten/v2 v2.0.0-20211013061545-07e4a09fb8e4 h1:eA9wi6ZzpIRobvXkn/S2Lyw1hr2pc71zxzOPl7Xjs4w=
+github.com/jeremywohl/flatten/v2 v2.0.0-20211013061545-07e4a09fb8e4/go.mod h1:s9g9Dfls+aEgucKXKW+i8MRZuLXT2MrD/WjYpMnWfOw=
 github.com/jinzhu/inflection v1.0.0 h1:K317FqzuhWc8YvSVlFMCCUb36O/S9MCKRDI7QkRKD/E=
 github.com/jinzhu/inflection v1.0.0/go.mod h1:h+uFLlag+Qp1Va5pdKtLDYj+kHp5pxUVkryuEj+Srlc=
 github.com/jinzhu/now v1.1.5 h1:/o9tlHleP7gOFmsnYNz3RGnqzefHA47wQpKrrdTIwXQ=

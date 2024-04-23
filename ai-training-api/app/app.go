@@ -48,6 +48,8 @@ func New(listenAddress string, listenPort int, databaseAddress string, databaseT
 
 	// Migrate the database.
 	db.AutoMigrate(&model.Process{})
+	db.AutoMigrate(&model.Training{})
+	db.AutoMigrate(&model.MetadataKV{})
 
 	// Create server and router.
 	serverLogLevel := dskit_log.Level{}

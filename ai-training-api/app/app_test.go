@@ -23,14 +23,22 @@ const (
 	listenAddress = "localhost"
 	listenPort    = 0
 
-	sampleProcessJSON = `{
-		"name": "Test Process"
+	sampleProcessNestedJSON = `{
+		"key1": "value1",
+		"key2": {
+			"key3": "value3"
+		}
 	}`
 )
 
 type createProcessResponse struct {
 	middleware.ResponseWrapper
 	Data CreateProcessResponse `json:"data"`
+}
+
+type getProcessResponse struct {
+	middleware.ResponseWrapper
+	Data GetProcessResponse `json:"data"`
 }
 
 func read[T any](t *testing.T, resp *http.Response) T {
@@ -68,10 +76,22 @@ func TestAppCreatesNewProcess(t *testing.T) {
 
 	httpC := newHTTPClient(t.Name())
 	registerProcessEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/process/new"
-	resp, err := httpC.Post(registerProcessEndpoint, "application/json", bytes.NewBufferString(sampleProcessJSON))
+	resp, err := httpC.Post(registerProcessEndpoint, "application/json", bytes.NewBufferString(sampleProcessNestedJSON))
 	require.NoError(t, err)
 	defer resp.Body.Close()
 
 	cpr := read[createProcessResponse](t, resp)
 	assert.NotEmpty(t, cpr.Data.ID)
+
+	// Verify the process was created.
+	getProcessEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/process/" + cpr.Data.ID
+	resp, err = httpC.Get(getProcessEndpoint)
+	require.NoError(t, err)
+	gpr := read[getProcessResponse](t, resp)
+	assert.Equal(t, cpr.Data.ID, gpr.Data.ID)
+	assert.Len(t, gpr.Data.Metadata, 2)
+	assert.Equal(t, "key1", gpr.Data.Metadata[0].Key)
+	assert.Equal(t, "value1", gpr.Data.Metadata[0].Value)
+	assert.Equal(t, "key2.key3", gpr.Data.Metadata[1].Key)
+	assert.Equal(t, "value3", gpr.Data.Metadata[1].Value)
 }
