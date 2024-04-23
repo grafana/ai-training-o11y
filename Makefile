@@ -16,5 +16,5 @@ docker: build-ai-training-api build-aitraining-app
 	docker compose up
 
 .PHONY: docker-down
-docker
+docker-down:
 	docker compose down
