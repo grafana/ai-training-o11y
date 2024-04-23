@@ -7,7 +7,7 @@ build-ai-training-api:
 ## Calls "mage" in the ai-training-app directory to build the app
 .phony: build-aitraining-app
 build-aitraining-app:
-	$(MAKE) && mage -v
+	cd grafana-aitraining-app && mage -v
 	cd grafana-aitraining-app && yarn install
 	cd grafana-aitraining-app && yarn build	
 
