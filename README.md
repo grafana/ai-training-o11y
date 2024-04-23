@@ -14,6 +14,8 @@ Requires:
 - Node (20 or later)
 - Go (1.22 or later)
 - Docker
+- Yarn
 - Make
+- Mage
 
 Builds dev environment with "make docker"
