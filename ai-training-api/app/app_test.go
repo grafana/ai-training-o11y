@@ -24,13 +24,19 @@ const (
 	listenPort    = 0
 
 	sampleProcessJSON = `{
-		"name": "Test Process"
+		"key1": "value1",
+		"key2": "value2"
 	}`
 )
 
 type createProcessResponse struct {
 	middleware.ResponseWrapper
 	Data CreateProcessResponse `json:"data"`
+}
+
+type getProcessResponse struct {
+	middleware.ResponseWrapper
+	Data GetProcessResponse `json:"data"`
 }
 
 func read[T any](t *testing.T, resp *http.Response) T {
@@ -74,4 +80,12 @@ func TestAppCreatesNewProcess(t *testing.T) {
 
 	cpr := read[createProcessResponse](t, resp)
 	assert.NotEmpty(t, cpr.Data.ID)
+
+	// // Verify the process was created.
+	// getProcessEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/process/" + cpr.Data.ID
+	// resp, err = httpC.Get(getProcessEndpoint)
+	// require.NoError(t, err)
+	// gpr := read[getProcessResponse](t, resp)
+	// assert.Equal(t, cpr.Data.ID, gpr.Data.ID)
+	// assert.Len(t, gpr.Data.Metadata, 2)
 }
