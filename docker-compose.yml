@@ -62,6 +62,16 @@ services:
     environment:
       air_wd: /go/src/ai-training-api
 
+  # Jupyter lab will be available at 127.0.0.1:8888/lab
+  jupyter:
+    image: quay.io/jupyter/pytorch-notebook:cuda12-python-3.11.8
+    command: "start-notebook.py --NotebookApp.token=\\'\\' --NotebookApp.password=\\'\\'"
+    volumes:
+      - .:/home/jovyan/work
+    ports:
+      - "8888:8888"
+
+
 # # Ensures data is persisted across container restarts
 # volumes:
 #   postgres_data:
