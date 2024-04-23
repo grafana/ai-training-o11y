@@ -11,7 +11,7 @@ type MetadataKV struct {
 	// Key is the metadata key.
 	Key string `json:"key"`
 	// Value is the metadata value.
-	Value any `json:"value"`
+	Value string `json:"value"`
 
 	// Process ID is the UUID of the process to which the metadata belongs.
 	// Its the foreign key to the Process table.

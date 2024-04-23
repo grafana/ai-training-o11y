@@ -10,6 +10,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	flatten "github.com/jeremywohl/flatten/v2"
 
 	"github.com/grafana/ai-training-o11y/ai-training-api/middleware"
 	"github.com/grafana/ai-training-o11y/ai-training-api/model"
@@ -61,7 +62,7 @@ func (a *App) registerNewProcess(tenantID string, req *http.Request) (interface{
 		return nil, middleware.ErrBadRequest(err)
 	}
 	defer req.Body.Close()
-	var data = map[string]any{}
+	var data = map[string]interface{}{}
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		return nil, middleware.ErrBadRequest(err)
@@ -80,13 +81,14 @@ func (a *App) registerNewProcess(tenantID string, req *http.Request) (interface{
 	}
 
 	// Flatten JSON body into key-value pairs and store in Metadata table.
-	for key, value := range data {
+	dataMap, err := flatten.Flatten(data, "", flatten.DotStyle)
+	for key, value := range dataMap {
 		err = a.db(req.Context()).
 			Model(&model.MetadataKV{}).
 			Create(&model.MetadataKV{
 				TenantID:  tenantID,
 				Key:       key,
-				Value:     value,
+				Value:     value.(string),
 				ProcessID: processID,
 			}).Error
 		if err != nil {

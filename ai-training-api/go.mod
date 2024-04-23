@@ -9,6 +9,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/grafana/dskit v0.0.0-20240411172511-de4086540f6f
+	github.com/jeremywohl/flatten/v2 v2.0.0-20211013061545-07e4a09fb8e4
 	github.com/prometheus/client_golang v1.19.0
 	github.com/prometheus/common v0.52.3
 	github.com/stretchr/testify v1.9.0
