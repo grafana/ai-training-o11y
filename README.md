@@ -7,3 +7,15 @@ Layout is as follows:
 - `o11y/` is the python exporter
 - `ai-training-api/` contains the metadata (and maybe proxy) service and any necessary files for mysql (specifying database configuration, especially)
 - `grafana-aitraining-app/` contains the grafana plugin
+
+## Development
+Requires:
+- Python (3.8 or later)
+- Node (20 or later)
+- Go (1.22 or later)
+- Docker
+- Yarn
+- Make
+- Mage
+
+Builds dev environment with "make docker"

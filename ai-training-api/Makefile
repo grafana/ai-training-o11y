@@ -9,6 +9,10 @@ GOARCH ?= $(shell go env GOARCH)
 # These env variables should be in sync with the ones exported in the Dockerfile
 GO_OPT= -mod vendor -ldflags "-X main.Branch=$(BUILD_BRANCH) -X main.Revision=$(BUILD_COMMIT) -X main.Version=$(BUILD_VERSION)"
 
+.PHONY: vendor
+vendor:
+	go mod vendor
+
 .PHONY: exe
-exe:
+exe: vendor
 	GO111MODULE=on go build $(GO_OPT) -o ./dist $(BUILD_INFO) ./...
