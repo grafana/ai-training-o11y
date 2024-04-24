@@ -13,6 +13,8 @@ from .. import logger
 
 class Client:
     def __init__(self):
+        self.process_uuid = None
+        self.user_metadata = None
         # We are going to assume that the user has set the credentials in the environment
         # There are other flows but it's the easiest one
         login_string = os.environ.get('GF_AI_TRAINING_CREDS')
