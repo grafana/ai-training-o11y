@@ -5,9 +5,9 @@ import requests
 import json
 import logging
 import os
-import validators
 import logging_loki
 import logging
+from .util.validate_url import validate_url
 from .. import logger
 
 
@@ -20,6 +20,7 @@ class Client:
         self.set_credentials(login_string)
     
     def set_credentials(self, login_string):
+
         if not login_string or type(login_string) != str:
             logger.error("No login string provided, please set GF_AI_TRAINING_CREDS environment variable")
             return False
@@ -29,16 +30,17 @@ class Client:
             return False
 
         token, url = login_string.split("@")
+        url = "https://" + url
         # Check that the token is exactly 40 characters of hex
         if len(token) != 40 or not all(c in "0123456789abcdef" for c in token):
             logger.error("Invalid token format")
             return "Invalid token format"
         # Validate that the url is a url
-        if not validators.url(url):
+        if not validate_url(url):
             logger.error("Invalid url format")
             return "Invalid url format"
 
-        self.url = 'https://' + url
+        self.url = url
         self.token = token
         return True
 
