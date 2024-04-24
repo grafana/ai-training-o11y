@@ -41,8 +41,6 @@ services:
       MARIADB_PASSWORD: pass
     volumes:
       - ./docker-compose/0-createdb.sql:/docker-entrypoint-initdb.d/0-createdb.sql
-    ports: 
-      - "8000:3456"
 
   ai-training-api:
     build:
@@ -63,6 +61,8 @@ services:
       - "air.ai-training-api.toml"
     environment:
       air_wd: /go/src/ai-training-api
+    ports: 
+      - "3456:8000"
 
   # Jupyter lab will be available at 127.0.0.1:8888/lab
   jupyter:
