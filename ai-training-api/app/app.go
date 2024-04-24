@@ -2,12 +2,15 @@ package api
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	dskit_log "github.com/grafana/dskit/log"
 	"github.com/grafana/dskit/server"
+	"github.com/mattn/go-sqlite3"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/common/promlog"
 	"gorm.io/gorm"
 
@@ -43,18 +46,31 @@ func New(listenAddress string, listenPort int, databaseAddress string, databaseT
 	db, err := db.New(logger, databaseAddress, databaseType)
 	if err != nil {
 		level.Error(logger).Log("msg", "error connecting to database", "err", err)
-		return nil, err
+		return nil, fmt.Errorf("error connecting to database: %w", err)
 	}
 
 	// Migrate the database.
-	db.AutoMigrate(&model.Process{})
-	db.AutoMigrate(&model.Training{})
-	db.AutoMigrate(&model.MetadataKV{})
+	err = db.AutoMigrate(&model.Process{})
+	if err != nil {
+		return nil, fmt.Errorf("error migrating Process table: %w", err)
+	}
+	err = db.AutoMigrate(&model.Group{})
+	if err != nil {
+		return nil, fmt.Errorf("error migrating Group table: %w", err)
+	}
+	err = db.AutoMigrate(&model.MetadataKV{})
+	if err != nil {
+		return nil, fmt.Errorf("error migrating MetadataKV table: %w", err)
+	}
 
 	// Create server and router.
 	serverLogLevel := dskit_log.Level{}
 	serverLogLevel.Set(promlogConfig.Level.String())
+	// Create a prometheus registry to avoid "duplicate metrics collector registration attempted"
+	// errors when running tests.
+	reg := prometheus.NewRegistry()
 	s, err := server.New(server.Config{
+		Registerer:        reg,
 		MetricsNamespace:  metricsNamespace,
 		HTTPListenAddress: listenAddress,
 		HTTPListenPort:    listenPort,
@@ -68,9 +84,18 @@ func New(listenAddress string, listenPort int, databaseAddress string, databaseT
 	// Create the App.
 	a := &App{
 		_db:    db,
-		dbMux:  &sync.Mutex{},
 		server: s,
 		logger: logger,
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("unable to determine underlying sql.DB: %w", err)
+	}
+
+	_, needsLock := sqlDB.Driver().(*sqlite3.SQLiteDriver)
+	if needsLock {
+		a.dbMux = &sync.Mutex{}
 	}
 
 	// Register all API routes.
@@ -96,4 +121,8 @@ func (a *App) db(ctx context.Context) *gorm.DB {
 		defer a.dbMux.Unlock()
 	}
 	return a._db.WithContext(ctx)
+}
+
+func (a *App) Shutdown() {
+	a.server.Shutdown()
 }

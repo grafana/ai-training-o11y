@@ -61,6 +61,8 @@ services:
       - "air.ai-training-api.toml"
     environment:
       air_wd: /go/src/ai-training-api
+    ports:
+      - "8000:8000"
 
 # # Ensures data is persisted across container restarts
 # volumes:

@@ -18,8 +18,15 @@ type Process struct {
 	// End time.
 	EndTime time.Time `json:"end_time"`
 
+	// Group ID is the UUID of the group to which the process belongs.
+	// Its the foreign key to the Group table. It is a pointer to allow for null values.
+	GroupID *uuid.UUID `json:"group_uuid" gorm:"type:char(36)"`
+
+	Project string `json:"project"`
+
 	// Process Metadata.
 	// This field is used to store additional metadata about the process.
 	// TODO: cap at 1024?
-	Metadata []MetadataKV `json:"-"`
+	// We are storing this in a separate table, so not serializing it here.
+	Metadata []MetadataKV `json:"metadata" gorm:"-"`
 }
