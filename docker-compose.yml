@@ -41,6 +41,8 @@ services:
       MARIADB_PASSWORD: pass
     volumes:
       - ./docker-compose/0-createdb.sql:/docker-entrypoint-initdb.d/0-createdb.sql
+    ports: 
+      - "8000:3456"
 
   ai-training-api:
     build:
@@ -70,6 +72,8 @@ services:
       - ./o11y:/home/jovyan/
     ports:
       - "8888:8888"
+    environment:
+      - GF_AI_TRAINING_CREDS=83bcaff6228b39bbe431af5e19fb4368e2a03dd3@localhost:3456
 
 
 # # Ensures data is persisted across container restarts
