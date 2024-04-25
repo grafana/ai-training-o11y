@@ -73,7 +73,7 @@ services:
     ports:
       - "8888:8888"
     environment:
-      - GF_AI_TRAINING_CREDS=83bcaff6228b39bbe431af5e19fb4368e2a03dd3@localhost:3456
+      - GF_AI_TRAINING_CREDS=83bcaff6228b39bbe431af5e19fb4368e2a03dd3@localhost:8000
 
 # # Ensures data is persisted across container restarts
 # volumes:
