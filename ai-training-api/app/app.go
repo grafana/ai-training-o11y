@@ -103,6 +103,10 @@ func New(listenAddress string, listenPort int, databaseAddress string, databaseT
 	router.Use(middleware.AuthnMiddleware(constTenant))
 	a.registerAPI(router)
 
+	// Register the admin routes.
+	adm := NewAdmin(a)
+	adm.Register(a.server.HTTP.PathPrefix("/admin").Subrouter())
+
 	// Start the server.
 	level.Info(logger).Log("msg", "starting server")
 	go func() {

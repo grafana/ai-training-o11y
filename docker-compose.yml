@@ -61,7 +61,7 @@ services:
       - "air.ai-training-api.toml"
     environment:
       air_wd: /go/src/ai-training-api
-    ports: 
+    ports:
       - "8000:8000"
 
   # Jupyter lab will be available at 127.0.0.1:8888/lab

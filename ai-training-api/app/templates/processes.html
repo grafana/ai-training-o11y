@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <style>{{ stylesheet }}</style>
+  <title>AI Training API - Processes</title>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a href="./processes" class="current">Processes</a>
+    </nav>
+    <h1>AI Training API - Processes</h1>
+  </header>
+  <main>
+    <table width="100%" border="1">
+      <thead>
+        <tr>
+          <th>Tenant ID</th>
+          <th>ID</th>
+          <th>StartTime</th>
+          <th>EndTime</th>
+          <th>Group ID</th>
+          <th>Project</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range $i, $ing := .Items }}
+        <tr>
+          <td>{{ .TenantID }}</td>
+          <td><a href="process/{{ .ID }}">{{ .ID }}</a></td>
+          <td>{{ .StartTime }}</td>
+          <td>{{ .EndTime }}</td>
+          <td>{{ .GroupID }}</td>
+          <td>{{ .Project }}</td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+  </main>
+</body>
+
+</html>
