@@ -21,11 +21,13 @@ from ._internal.client import Client
 client = Client()
 
 from .exported.init import init
-# from .exported.log import log
+from .exported.log import log
+from .exported.update import update
 # from .exported.finish import finish
 
 __all__ = [
     'init',
     'log',
+    'update',
     'finish'
-    ]
+]

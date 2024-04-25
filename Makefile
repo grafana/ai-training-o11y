@@ -18,3 +18,8 @@ docker: build-ai-training-api build-aitraining-app
 .PHONY: docker-down
 docker-down:
 	docker compose down
+
+.PHONY: jupyter
+jupyter: # Launchs web browser with jupyter notebook
+	@echo "Launching Jupyter Notebook"
+	@open http://localhost:8888
