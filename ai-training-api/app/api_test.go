@@ -16,6 +16,7 @@ import (
 
 	db "github.com/grafana/ai-training-o11y/ai-training-api/internal"
 	"github.com/grafana/ai-training-o11y/ai-training-api/middleware"
+	"github.com/grafana/ai-training-o11y/ai-training-api/model"
 	"github.com/grafana/ai-training-o11y/ai-training-api/testutil"
 )
 
@@ -24,21 +25,31 @@ const (
 	listenPort    = 0
 
 	sampleProcessNestedJSON = `{
-		"key1": "value1",
-		"key2": {
-			"key3": "value3"
+		"metadata": {
+			"key1": "value1"
+		}
+	}`
+	sampleProcessWithGroupNameJSON = `{
+		"group": "group1",
+		"metadata": {
+			"key1": "value1"
 		}
 	}`
 )
 
 type createProcessResponse struct {
 	middleware.ResponseWrapper
-	Data CreateProcessResponse `json:"data"`
+	Data model.Process `json:"data"`
 }
 
 type getProcessResponse struct {
 	middleware.ResponseWrapper
-	Data GetProcessResponse `json:"data"`
+	Data model.Process `json:"data"`
+}
+
+type getGroupResponse struct {
+	middleware.ResponseWrapper
+	Data model.Group `json:"data"`
 }
 
 func read[T any](t *testing.T, resp *http.Response) T {
@@ -73,6 +84,7 @@ func TestAppCreatesNewProcess(t *testing.T) {
 	logger := log.NewNopLogger()
 	testApp := NewTestApp(t, logger)
 	require.NotNil(t, testApp)
+	defer testApp.Shutdown()
 
 	httpC := newHTTPClient(t.Name())
 	registerProcessEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/process/new"
@@ -84,14 +96,42 @@ func TestAppCreatesNewProcess(t *testing.T) {
 	assert.NotEmpty(t, cpr.Data.ID)
 
 	// Verify the process was created.
-	getProcessEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/process/" + cpr.Data.ID
+	getProcessEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/process/" + cpr.Data.ID.String()
 	resp, err = httpC.Get(getProcessEndpoint)
 	require.NoError(t, err)
 	gpr := read[getProcessResponse](t, resp)
 	assert.Equal(t, cpr.Data.ID, gpr.Data.ID)
-	assert.Len(t, gpr.Data.Metadata, 2)
+	assert.Len(t, gpr.Data.Metadata, 1)
 	assert.Equal(t, "key1", gpr.Data.Metadata[0].Key)
 	assert.Equal(t, "value1", gpr.Data.Metadata[0].Value)
-	assert.Equal(t, "key2.key3", gpr.Data.Metadata[1].Key)
-	assert.Equal(t, "value3", gpr.Data.Metadata[1].Value)
+}
+
+func TestAppCreatesNewProcessAndGroup(t *testing.T) {
+	logger := log.NewNopLogger()
+	testApp := NewTestApp(t, logger)
+	require.NotNil(t, testApp)
+	defer testApp.Shutdown()
+
+	httpC := newHTTPClient(t.Name())
+	registerProcessEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/process/new"
+	resp, err := httpC.Post(registerProcessEndpoint, "application/json", bytes.NewBufferString(sampleProcessWithGroupNameJSON))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	cpr := read[createProcessResponse](t, resp)
+	assert.NotEmpty(t, cpr.Data.ID)
+
+	// Verify the process was created.
+	getProcessEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/process/" + cpr.Data.ID.String()
+	resp, err = httpC.Get(getProcessEndpoint)
+	require.NoError(t, err)
+	gpr := read[getProcessResponse](t, resp)
+	assert.Equal(t, cpr.Data.ID, gpr.Data.ID)
+
+	// Verify the group was created.
+	getGroupEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/group/" + gpr.Data.GroupID.String()
+	resp, err = httpC.Get(getGroupEndpoint)
+	require.NoError(t, err)
+	ggr := read[getGroupResponse](t, resp)
+	assert.Equal(t, gpr.Data.GroupID, &ggr.Data.ID)
 }

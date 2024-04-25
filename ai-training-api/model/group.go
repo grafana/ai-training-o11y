@@ -7,42 +7,42 @@ import (
 	"gorm.io/datatypes"
 )
 
-// The database model used to track training information.
-type Training struct {
-	// UUID generated for the training.
+// The database model used to track Group information.
+type Group struct {
+	// UUID generated for the group.
 	ID uuid.UUID `json:"id" gorm:"primarykey;type:char(36)" validate:"isdefault"`
-	// Tenant ID is used to identify the tenant to which the training belongs.
+	// Tenant ID is used to identify the tenant to which the group belongs.
 	TenantID string `json:"tenant_id"`
-	// The training name.
+	// The group name.
 	Name string `json:"name"`
-	// Description for the training.
+	// Description for the group.
 	Description string `json:"description"`
-	// The training status.
+	// The status of processes in the group.
 	Status string `json:"status"`
 	// Start time.
 	StartTime time.Time `json:"start_time"`
 	// End time.
 	EndTime time.Time `json:"end_time"`
 
-	// A training can have multiple processes.
-	Processes []Process `json:"processes" gorm:"serializer:json"`
+	// Processes in the group.
+	Processes []Process `json:"processes" gorm:"foreignKey:GroupID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
 
-	// Process Metadata.
+	// Metadata for the group.
 	// links to HF, GH repos, DVC checkpoints, hyperparameters - can be in dozens, rarely hundreds
 	// TODO: cap at 1024?
 	Metadata datatypes.JSON `json:"metadata"`
 }
 
 // Uodate StartTime and EndTime based on Start and End time of the processes.
-func (t *Training) UpdateTimes() {
-	if len(t.Processes) == 0 {
+func (t *Group) UpdateTimes(processes []Process) {
+	if len(processes) == 0 {
 		return
 	}
 
-	t.StartTime = t.Processes[0].StartTime
-	t.EndTime = t.Processes[0].EndTime
+	t.StartTime = processes[0].StartTime
+	t.EndTime = processes[0].EndTime
 
-	for _, p := range t.Processes {
+	for _, p := range processes {
 		if p.StartTime.Before(t.StartTime) {
 			t.StartTime = p.StartTime
 		}
