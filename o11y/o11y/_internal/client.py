@@ -77,7 +77,7 @@ class Client:
                 tags={
                     # This specific label guarantees that these logs never collide with anything not from this exporter
                     "grafana-aitraining-o11y-process-uuid": self.process_uuid,
-                    "log-type": "custom",
+                    "log-type": "model-metric",
                 },
                 # The LokiHandler doesn't currently allow the use of token auth, we're going to have to add it
                 # or write our own handler, which seems a lot less elegant
