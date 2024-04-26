@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	flatten "github.com/jeremywohl/flatten/v2"
+	"gorm.io/gorm"
 
 	"github.com/grafana/ai-training-o11y/ai-training-api/middleware"
 	"github.com/grafana/ai-training-o11y/ai-training-api/model"
@@ -26,7 +28,7 @@ func (app *App) registerAPI(router *mux.Router) {
 	router.HandleFunc("/process/new", requestMiddleware(app.registerNewProcess)).Methods("POST")
 	router.HandleFunc("/process/{id}", requestMiddleware(app.getProcess)).Methods("GET")
 	router.HandleFunc("/processes", requestMiddleware(app.listProcess)).Methods("GET")
-	// router.HandleFunc("/process/{id}/update-metadata", requestMiddleware(app.updateProcessMetadata)).Methods("POST")
+	router.HandleFunc("/process/{id}/update-metadata", requestMiddleware(app.updateProcessMetadata)).Methods("POST")
 	// router.HandleFunc("/process/{id}/proxy/logs", requestMiddleware(app.proxyProcessLogs)).Methods("POST")
 	// router.HandleFunc("/process/{id}/proxy/traces", requestMiddleware(app.proxyProcessTraces)).Methods("POST")
 	// router.HandleFunc("/process/{id}/model-metrics", requestMiddleware(app.addModelMetrics)).Methods("POST")
@@ -164,6 +166,85 @@ func (a *App) listProcess(tenantID string, req *http.Request) (interface{}, erro
 
 	level.Info(a.logger).Log("msg", "found processes", "processes", processes)
 	return processes, err
+}
+
+// updateProcessMetadata updates the metadata of a process.
+func (a *App) updateProcessMetadata(tenantID string, req *http.Request) (interface{}, error) {
+	processID := namedParam(req, "id")
+	parsed, err := uuid.Parse(processID)
+	if err != nil {
+		return nil, middleware.ErrBadRequest(err)
+	}
+
+	// Read and parse request body.
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		return nil, middleware.ErrBadRequest(err)
+	}
+	defer req.Body.Close()
+	var data = map[string]interface{}{}
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return nil, middleware.ErrBadRequest(err)
+	}
+
+	// Only look for metadata in the request body.
+	for key, value := range data {
+		switch key {
+		case "metadata":
+			metadata := value.(map[string]interface{})
+			// Flatten JSON body into key-value pairs and store in Metadata table.
+			dataMap, err := flatten.Flatten(metadata, "", flatten.DotStyle)
+			if err != nil {
+				return nil, fmt.Errorf("error flattening metadata: %w", err)
+			}
+
+			// Check if these keys already exist in the Metadata table.
+			for mk, mv := range dataMap {
+				var metadata model.MetadataKV
+				err = a.db(req.Context()).
+					Where(&model.MetadataKV{
+						TenantID:  tenantID,
+						Key:       mk,
+						ProcessID: parsed,
+					}).First(&metadata).Error
+				if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+					// If the key does not exist, create a new entry.
+					err = a.db(req.Context()).
+						Model(&model.MetadataKV{}).
+						Create(&model.MetadataKV{
+							TenantID:  tenantID,
+							Key:       mk,
+							Value:     mv.(string),
+							ProcessID: parsed,
+						}).Error
+					if err != nil {
+						return nil, fmt.Errorf("error creating metadata: %w", err)
+					}
+				} else {
+					// If the key exists, update the value.
+					err = a.db(req.Context()).
+						Model(&model.MetadataKV{}).
+						Where(&model.MetadataKV{
+							TenantID:  tenantID,
+							Key:       mk,
+							ProcessID: parsed,
+						}).Update("value", mv.(string)).Error
+					if err != nil {
+						return nil, fmt.Errorf("error updating metadata: %w", err)
+					}
+				}
+			}
+			continue
+		default:
+			level.Error(a.logger).Log("msg", "unknown key in request body", "key", key)
+		}
+	}
+
+	level.Info(a.logger).Log("msg", "updated metadata", "process_id", processID)
+
+	// Return the process ID.
+	return model.Process{ID: parsed}, err
 }
 
 // registerNewGroup registers a new Group and returns a UUID.
