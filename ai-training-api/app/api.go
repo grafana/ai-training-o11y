@@ -151,6 +151,7 @@ func (a *App) getProcess(tenantID string, req *http.Request) (interface{}, error
 }
 
 // listProcess returns a list of all processes.
+// It limits the number of processes returned to listProcessLimit.
 func (a *App) listProcess(tenantID string, req *http.Request) (interface{}, error) {
 	processes := []model.Process{}
 	err := a.db(req.Context()).
