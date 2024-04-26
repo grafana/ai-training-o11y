@@ -20,6 +20,10 @@ docker-down:
 	docker compose down
 
 .PHONY: jupyter
-jupyter: # Launchs web browser with jupyter notebook
-	@echo "Launching Jupyter Notebook"
-	@open http://localhost:8888
+jupyter:
+	docker compose -f docker-compose-jupyter.yml up
+
+# This won't work on macs
+.PHONY: jupytorch
+jupyter:
+	docker compose -f docker-compose-pytorch.yml up
