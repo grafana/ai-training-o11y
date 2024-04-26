@@ -47,8 +47,6 @@ services:
       context: .
       dockerfile: ai-training-api/Dockerfile
       target: development
-      cache_from:
-        - grafana/ai-training-api:latest
       args:
         BUILDKIT_INLINE_CACHE: "1"
     working_dir: /go/src/ai-training-api
@@ -63,6 +61,8 @@ services:
       air_wd: /go/src/ai-training-api
     ports:
       - "8000:8000"
+    depends_on:
+      - db
 
   # Jupyter lab will be available at 127.0.0.1:8888/lab
   jupyter:

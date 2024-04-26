@@ -54,14 +54,17 @@ func New(listenAddress string, listenPort int, databaseAddress string, databaseT
 	if err != nil {
 		return nil, fmt.Errorf("error migrating Process table: %w", err)
 	}
+	level.Debug(logger).Log("msg", "checking tables", "process_table_exists", db.Migrator().HasTable(&model.Process{}))
 	err = db.AutoMigrate(&model.Group{})
 	if err != nil {
 		return nil, fmt.Errorf("error migrating Group table: %w", err)
 	}
+	level.Debug(logger).Log("msg", "checking tables", "group_table_exists", db.Migrator().HasTable(&model.Group{}))
 	err = db.AutoMigrate(&model.MetadataKV{})
 	if err != nil {
 		return nil, fmt.Errorf("error migrating MetadataKV table: %w", err)
 	}
+	level.Debug(logger).Log("msg", "checking tables", "metadata_kv_table_exists", db.Migrator().HasTable(&model.MetadataKV{}))
 
 	// Create server and router.
 	serverLogLevel := dskit_log.Level{}
