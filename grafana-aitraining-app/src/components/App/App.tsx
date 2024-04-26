@@ -3,13 +3,13 @@ import { AppRootProps } from '@grafana/data';
 import { sceneUtils } from '@grafana/scenes';
 import { PluginPropsContext } from '../../utils/utils.plugin';
 import { Routes } from '../Routes';
-import { MLObservabilityAppDatasource } from '../../datasource/Datasource';
+import { TrainingApiDatasource } from '../../datasource/Datasource';
 
 
 
 export class App extends React.PureComponent<AppRootProps> {
   componentDidMount() {
-    sceneUtils.registerRuntimeDataSource({ dataSource: new MLObservabilityAppDatasource('grafana-aitraining-app-datasource', 'grafana-aitraining-app-datasource-uid', this.props.meta.id)});
+    sceneUtils.registerRuntimeDataSource({ dataSource: new TrainingApiDatasource('grafana-aitraining-app-datasource', 'grafana-aitraining-app-datasource-uid', this.props.meta.id)});
   }
   
   render() {
