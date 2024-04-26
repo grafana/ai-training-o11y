@@ -77,6 +77,8 @@ func NewTestApp(t *testing.T, logger log.Logger) *App {
 	logFormat.Set("logfmt")
 	testApp, err := New(listenAddress, listenPort, filepath.Join(t.TempDir(), "test.db"), db.SQLite, "0", &promlog.Config{Level: logLevel, Format: logFormat})
 	require.NoError(t, err)
+	// Run the server in parallel
+	go testApp.Run()
 	return testApp
 }
 

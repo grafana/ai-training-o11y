@@ -74,7 +74,12 @@ func run() int {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	_, err := app.New(*listenAddress, *listenPort, *databaseAddress, *databaseType, *constTenant, promlogConfig)
+	a, err := app.New(*listenAddress, *listenPort, *databaseAddress, *databaseType, *constTenant, promlogConfig)
+	if err != nil {
+		return 1
+	}
+
+	err = a.Run()
 	if err != nil {
 		return 1
 	}
