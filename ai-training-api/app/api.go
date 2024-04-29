@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,9 +30,7 @@ func (app *App) registerAPI(router *mux.Router) {
 	router.HandleFunc("/process/{id}", requestMiddleware(app.getProcess)).Methods("GET")
 	router.HandleFunc("/processes", requestMiddleware(app.listProcess)).Methods("GET")
 	router.HandleFunc("/process/{id}/update-metadata", requestMiddleware(app.updateProcessMetadata)).Methods("POST")
-	// router.HandleFunc("/process/{id}/proxy/logs", requestMiddleware(app.proxyProcessLogs)).Methods("POST")
-	// router.HandleFunc("/process/{id}/proxy/traces", requestMiddleware(app.proxyProcessTraces)).Methods("POST")
-	// router.HandleFunc("/process/{id}/model-metrics", requestMiddleware(app.addModelMetrics)).Methods("POST")
+	router.HandleFunc("/process/{id}/model-metrics", requestMiddleware(app.addModelMetrics)).Methods("POST")
 
 	router.HandleFunc("/group/new", requestMiddleware(app.registerNewGroup)).Methods("POST")
 	router.HandleFunc("/group/{id}", requestMiddleware(app.getGroup)).Methods("GET")
@@ -89,7 +88,7 @@ func (a *App) registerNewProcess(tenantID string, req *http.Request) (interface{
 			}
 			process.GroupID = &groupID
 			continue
-		case "metadata":
+		case "user_metadata":
 			// Store metadata information in the Metadata table.
 			metadata := value.(map[string]interface{})
 			// Flatten JSON body into key-value pairs and store in Metadata table.
@@ -98,6 +97,10 @@ func (a *App) registerNewProcess(tenantID string, req *http.Request) (interface{
 				return nil, fmt.Errorf("error flattening metadata: %w", err)
 			}
 			for mk, mv := range dataMap {
+				// TODO: Handle non-string values.
+				if _, ok := mv.(string); !ok {
+					continue
+				}
 				err = a.db(req.Context()).
 					Model(&model.MetadataKV{}).
 					Create(&model.MetadataKV{
@@ -191,7 +194,7 @@ func (a *App) updateProcessMetadata(tenantID string, req *http.Request) (interfa
 	// Only look for metadata in the request body.
 	for key, value := range data {
 		switch key {
-		case "metadata":
+		case "user_metadata":
 			metadata := value.(map[string]interface{})
 			// Flatten JSON body into key-value pairs and store in Metadata table.
 			dataMap, err := flatten.Flatten(metadata, "", flatten.DotStyle)
@@ -210,6 +213,10 @@ func (a *App) updateProcessMetadata(tenantID string, req *http.Request) (interfa
 					}).First(&metadata).Error
 				if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 					// If the key does not exist, create a new entry.
+					// TODO: Handle non-string values.
+					if _, ok := mv.(string); !ok {
+						continue
+					}
 					err = a.db(req.Context()).
 						Model(&model.MetadataKV{}).
 						Create(&model.MetadataKV{
@@ -223,6 +230,10 @@ func (a *App) updateProcessMetadata(tenantID string, req *http.Request) (interfa
 					}
 				} else {
 					// If the key exists, update the value.
+					// TODO: Handle non-string values.
+					if _, ok := mv.(string); !ok {
+						continue
+					}
 					err = a.db(req.Context()).
 						Model(&model.MetadataKV{}).
 						Where(&model.MetadataKV{
@@ -284,6 +295,45 @@ func (a *App) getGroup(tenantID string, req *http.Request) (interface{}, error) 
 
 	level.Info(a.logger).Log("msg", "found group", "group_id", groupId)
 	return group, err
+}
+
+// addModelMetrics proxies logs related model-metrics to Loki.
+func (a *App) addModelMetrics(tenantID string, req *http.Request) (interface{}, error) {
+	// TODO: Integrate with GCom API to find the corresponding Loki TenantID associated
+	// with the tenantID.
+
+	// For now, we can just forward the request body as is, to the Loki endpoint.
+	// Read the request body.
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		return nil, middleware.ErrBadRequest(err)
+	}
+	defer req.Body.Close()
+
+	level.Debug(a.logger).Log("msg", "forwarding model-metrics to Loki", "body", string(body))
+
+	// Forward the request to the Loki endpoint.
+	httpClient := &http.Client{}
+	lokiEndpoint := a.lokiAddress
+	lokiReq, err := http.NewRequest("POST", lokiEndpoint, bytes.NewBuffer(body))
+	if err != nil {
+		return nil, middleware.ErrBadRequest(err)
+	}
+	lokiReq.Header.Set("Content-Type", "application/json")
+	lokiResp, err := httpClient.Do(lokiReq)
+	if err != nil {
+		return nil, middleware.ErrBadRequest(err)
+	}
+	defer lokiResp.Body.Close()
+
+	// Read the response body.
+	lokiRespBody, err := io.ReadAll(lokiResp.Body)
+	if err != nil {
+		return nil, middleware.ErrBadRequest(err)
+	}
+
+	// Return the response body.
+	return string(lokiRespBody), nil
 }
 
 func namedParam(req *http.Request, name string) string {

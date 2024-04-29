@@ -59,6 +59,10 @@ func run() int {
 			"const-tenant",
 			"A constant tenant to add to every request. Should only be used in development.",
 		).String()
+		lokiAddress = kingpin.Flag(
+			"loki-address",
+			"Loki address to send logs to.",
+		).Default("http://loki:3100/loki/api/v1/push").String()
 		// tenantOverridesFile = kingpin.Flag(
 		// 	"tenant-overrides-file",
 		// 	"Path to YAML file containing overrides per tenant.",
@@ -74,7 +78,7 @@ func run() int {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	a, err := app.New(*listenAddress, *listenPort, *databaseAddress, *databaseType, *constTenant, promlogConfig)
+	a, err := app.New(*listenAddress, *listenPort, *databaseAddress, *databaseType, *constTenant, *lokiAddress, promlogConfig)
 	if err != nil {
 		return 1
 	}

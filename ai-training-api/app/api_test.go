@@ -25,18 +25,18 @@ const (
 	listenPort    = 0
 
 	sampleProcessNestedJSON = `{
-		"metadata": {
+		"user_metadata": {
 			"key1": "value1"
 		}
 	}`
 	sampleProcessWithGroupNameJSON = `{
 		"group": "group1",
-		"metadata": {
+		"user_metadata": {
 			"key1": "value1"
 		}
 	}`
 	sampleUpdateMetadataJSON = `{
-		"metadata": {
+		"user_metadata": {
 			"key1": "completely_different_value",
 			"key2": "value2"
 		}
@@ -81,7 +81,7 @@ func NewTestApp(t *testing.T, logger log.Logger) *App {
 	logLevel.Set("debug")
 	logFormat := &promlog.AllowedFormat{}
 	logFormat.Set("logfmt")
-	testApp, err := New(listenAddress, listenPort, filepath.Join(t.TempDir(), "test.db"), db.SQLite, "0", &promlog.Config{Level: logLevel, Format: logFormat})
+	testApp, err := New(listenAddress, listenPort, filepath.Join(t.TempDir(), "test.db"), db.SQLite, "0", "", &promlog.Config{Level: logLevel, Format: logFormat})
 	require.NoError(t, err)
 	// Run the server in parallel
 	go testApp.Run()

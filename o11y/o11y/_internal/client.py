@@ -20,7 +20,7 @@ class Client:
         login_string = os.environ.get('GF_AI_TRAINING_CREDS')
         self.custom_logger = logging.getLogger(__name__ + "-ai-training-o11y-client")
         self.set_credentials(login_string)
-    
+
     def set_credentials(self, login_string):
 
         if not login_string or type(login_string) != str:
@@ -70,7 +70,7 @@ class Client:
         if response.status_code != 200:
             logging.error(f'Failed to register with error: {response.text}')
             return False
-        try: 
+        try:
             process_uuid = response.json()['data']['process_uuid']
         except:
             logging.error(f'Failed to register with error: {response.text}')
@@ -82,8 +82,8 @@ class Client:
                 url=f"{self.url}/api/v1/process/{self.process_uuid}/model-metrics",
                 tags={
                     # This specific label guarantees that these logs never collide with anything not from this exporter
-                    "grafana-aitraining-o11y-process-uuid": self.process_uuid,
-                    "log-type": "model-metric",
+                    "grafana_aitraining_o11y_process_uuid": self.process_uuid,
+                    "log_type": "model-metric",
                 },
                 # The LokiHandler doesn't currently allow the use of token auth, we're going to have to add it
                 # or write our own handler, which seems a lot less elegant
@@ -93,7 +93,7 @@ class Client:
             )
         )
         return True
-    
+
     # Update user_metadata information
     def update_metadata(self, process_uuid, user_metadata):
         if not process_uuid:
@@ -111,7 +111,7 @@ class Client:
             logging.error(f'Failed to update metadata: {response.text}')
             return False
         return True
-    
+
     # Report a state change to the process
     # POST /api/v1/process/{uuid}/state
     # Options are “succeeded” and “failed”
@@ -131,7 +131,7 @@ class Client:
             logging.error(f'Failed to report state: {response.text}')
             return False
         return True
-    
+
     def send_log(self, log):
         if not self.process_uuid:
             logging.error("No process registered, unable to send logs")

@@ -43,12 +43,7 @@ services:
       - ./docker-compose/0-createdb.sql:/docker-entrypoint-initdb.d/0-createdb.sql
 
   ai-training-api:
-    build:
-      context: .
-      dockerfile: ai-training-api/Dockerfile
-      target: development
-      args:
-        BUILDKIT_INLINE_CACHE: "1"
+    image: grafana/ai-training-api:latest
     working_dir: /go/src/ai-training-api
     # use a different endpoint in the docker-compose environment so we can use air
     # which monitors files and automatically restarts the server when they change
