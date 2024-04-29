@@ -26,5 +26,5 @@ jupyter:
 
 # This won't work on macs
 .PHONY: jupytorch
-jupyter:
+jupytorch:
 	docker compose -f docker-compose-pytorch.yml up
