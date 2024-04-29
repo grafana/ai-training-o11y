@@ -17,7 +17,7 @@ export const getProjects = (apiPrefix: string): Promise<DataQueryResponseData> =
 };
 
 
-export class MLObservabilityAppDatasource extends RuntimeDataSource {
+export class TrainingApiDatasource extends RuntimeDataSource {
   private apiPrefix: string;
 
   constructor(datasourceId: string, datasourceUid: string, pluginId: string) {
@@ -40,4 +40,3 @@ export class MLObservabilityAppDatasource extends RuntimeDataSource {
     return Promise.resolve({ status: 'success', message: 'Datasource frontend component works' });
   }
 }
-

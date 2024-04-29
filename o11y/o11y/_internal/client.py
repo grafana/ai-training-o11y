@@ -32,15 +32,17 @@ class Client:
             return False
 
         token, url = login_string.split("@")
-        url = "https://" + url
+        url = "http://" + url
         # Check that the token is exactly 40 characters of hex
         if len(token) != 40 or not all(c in "0123456789abcdef" for c in token):
             logger.error("Invalid token format")
             return "Invalid token format"
-        # Validate that the url is a url
-        if not validate_url(url):
-            logger.error("Invalid url format")
-            return "Invalid url format"
+        # Disabled until I can figure out how to make this work with service names
+        # This is both a dev env problem and a problem when running in e.g. k8s
+        # # Validate that the url is a url
+        # if not validate_url(url):
+        #     logger.error("Invalid url format")
+        #     return "Invalid url format"
 
         self.url = url
         self.token = token
@@ -68,7 +70,11 @@ class Client:
         if response.status_code != 200:
             logging.error(f'Failed to register with error: {response.text}')
             return False
-        process_uuid = response.json()['process_uuid']
+        try: 
+            process_uuid = response.json()['data']['process_uuid']
+        except:
+            logging.error(f'Failed to register with error: {response.text}')
+            return False
         self.process_uuid = process_uuid
         self.user_metadata = user_metadata
         self.custom_logger.addHandler(
@@ -130,5 +136,5 @@ class Client:
         if not self.process_uuid:
             logging.error("No process registered, unable to send logs")
             return False
-        self.custom_logger.log(log)
+        self.custom_logger.log(logging.INFO, log)
         return True
