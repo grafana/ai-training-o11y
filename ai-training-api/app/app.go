@@ -31,10 +31,20 @@ type App struct {
 	// The server instance.
 	server *server.Server
 
+	// Loki address to proxy logs.
+	lokiAddress string
+
 	logger log.Logger
 }
 
-func New(listenAddress string, listenPort int, databaseAddress string, databaseType string, constTenant string, promlogConfig *promlog.Config) (*App, error) {
+func New(
+	listenAddress string,
+	listenPort int,
+	databaseAddress string,
+	databaseType string,
+	constTenant string,
+	lokiAddress string,
+	promlogConfig *promlog.Config) (*App, error) {
 	// Initialize observability constructs.
 	logger := promlog.New(promlogConfig)
 
@@ -86,9 +96,10 @@ func New(listenAddress string, listenPort int, databaseAddress string, databaseT
 
 	// Create the App.
 	a := &App{
-		_db:    db,
-		server: s,
-		logger: logger,
+		_db:         db,
+		server:      s,
+		lokiAddress: lokiAddress,
+		logger:      logger,
 	}
 
 	sqlDB, err := db.DB()
