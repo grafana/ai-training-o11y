@@ -4,20 +4,19 @@ deleteDatasources:
   - name: Mimir
 
 datasources:
-  - name: Postgres
-    type: postgres
-    url: postgres:5432
-    user: postgres
+  - name: MySQL
+    type: mysql
+    url: db:3306
+    user: user
     secureJsonData:
-      password: 'password'
+      password: 'pass'
     jsonData:
-      database: grafana-ai-training-metadata
+      database: aitraining
       sslmode: 'disable' # disable/require/verify-ca/verify-full
       maxOpenConns: 100 # Grafana v5.4+
       maxIdleConns: 100 # Grafana v5.4+
       maxIdleConnsAuto: true # Grafana v9.5.1+
       connMaxLifetime: 14400 # Grafana v5.4+
-      postgresVersion: 14011 # 903=9.3, 904=9.4, 905=9.5, 906=9.6, 1000=10
       timescaledb: false
 
   - name: Mimir
@@ -32,7 +31,7 @@ datasources:
 
   - name: Loki
     type: loki
-    access: proxy 
+    access: proxy
     orgId: 1
     url: http://loki:3100
     basicAuth: false

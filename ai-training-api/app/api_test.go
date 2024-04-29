@@ -35,6 +35,12 @@ const (
 			"key1": "value1"
 		}
 	}`
+	sampleUpdateMetadataJSON = `{
+		"metadata": {
+			"key1": "completely_different_value",
+			"key2": "value2"
+		}
+	}`
 )
 
 type createProcessResponse struct {
@@ -136,4 +142,44 @@ func TestAppCreatesNewProcessAndGroup(t *testing.T) {
 	require.NoError(t, err)
 	ggr := read[getGroupResponse](t, resp)
 	assert.Equal(t, gpr.Data.GroupID, &ggr.Data.ID)
+}
+
+func TestAppCreatesAndUpdatesMetadata(t *testing.T) {
+	logger := log.NewNopLogger()
+	testApp := NewTestApp(t, logger)
+	require.NotNil(t, testApp)
+	defer testApp.Shutdown()
+
+	httpC := newHTTPClient(t.Name())
+	registerProcessEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/process/new"
+	resp, err := httpC.Post(registerProcessEndpoint, "application/json", bytes.NewBufferString(sampleProcessNestedJSON))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	cpr := read[createProcessResponse](t, resp)
+	assert.NotEmpty(t, cpr.Data.ID)
+
+	// Verify the process was created.
+	getProcessEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/process/" + cpr.Data.ID.String()
+	resp, err = httpC.Get(getProcessEndpoint)
+	require.NoError(t, err)
+	gpr := read[getProcessResponse](t, resp)
+	assert.Equal(t, cpr.Data.ID, gpr.Data.ID)
+
+	// Update the metadata.
+	updateMetadataEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/process/" + cpr.Data.ID.String() + "/update-metadata"
+	resp, err = httpC.Post(updateMetadataEndpoint, "application/json", bytes.NewBufferString(sampleUpdateMetadataJSON))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	// Verify the metadata was updated.
+	resp, err = httpC.Get(getProcessEndpoint)
+	require.NoError(t, err)
+	gpr = read[getProcessResponse](t, resp)
+	assert.Equal(t, cpr.Data.ID, gpr.Data.ID)
+	assert.Len(t, gpr.Data.Metadata, 2)
+	assert.Equal(t, "key1", gpr.Data.Metadata[0].Key)
+	assert.Equal(t, "completely_different_value", gpr.Data.Metadata[0].Value)
+	assert.Equal(t, "key2", gpr.Data.Metadata[1].Key)
+	assert.Equal(t, "value2", gpr.Data.Metadata[1].Value)
 }
