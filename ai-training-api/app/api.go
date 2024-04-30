@@ -28,12 +28,14 @@ func (app *App) registerAPI(router *mux.Router) {
 
 	router.HandleFunc("/process/new", requestMiddleware(app.registerNewProcess)).Methods("POST")
 	router.HandleFunc("/process/{id}", requestMiddleware(app.getProcess)).Methods("GET")
+	router.HandleFunc("/process/{id}/delete", requestMiddleware(app.deleteProcess)).Methods("POST")
 	router.HandleFunc("/processes", requestMiddleware(app.listProcess)).Methods("GET")
 	router.HandleFunc("/process/{id}/update-metadata", requestMiddleware(app.updateProcessMetadata)).Methods("POST")
 	router.HandleFunc("/process/{id}/model-metrics", requestMiddleware(app.addModelMetrics)).Methods("POST")
 
 	router.HandleFunc("/group/new", requestMiddleware(app.registerNewGroup)).Methods("POST")
 	router.HandleFunc("/group/{id}", requestMiddleware(app.getGroup)).Methods("GET")
+	router.HandleFunc("/group/{id}/delete", requestMiddleware(app.deleteGroup)).Methods("POST")
 }
 
 // registerNewProcess registers a new Process and returns a UUID.
@@ -153,6 +155,28 @@ func (a *App) getProcess(tenantID string, req *http.Request) (interface{}, error
 		}).Find(&process.Metadata).Error
 
 	return process, err
+}
+
+// deleteProcess deletes a process by ID.
+func (a *App) deleteProcess(tenantID string, req *http.Request) (interface{}, error) {
+	processID := namedParam(req, "id")
+	parsed, err := uuid.Parse(processID)
+	if err != nil {
+		return nil, middleware.ErrBadRequest(err)
+	}
+
+	// Delete the process.
+	err = a.db(req.Context()).
+		Where(&model.Process{
+			TenantID: tenantID,
+			ID:       parsed,
+		}).Delete(&model.Process{}).Error
+	if err != nil {
+		return nil, middleware.ErrNotFound(err)
+	}
+
+	level.Info(a.logger).Log("msg", "deleted process", "process_id", processID)
+	return nil, err
 }
 
 // listProcess returns a list of all processes.
@@ -295,6 +319,28 @@ func (a *App) getGroup(tenantID string, req *http.Request) (interface{}, error) 
 
 	level.Info(a.logger).Log("msg", "found group", "group_id", groupId)
 	return group, err
+}
+
+// deleteGroup deletes a group by ID.
+func (a *App) deleteGroup(tenantID string, req *http.Request) (interface{}, error) {
+	groupId := namedParam(req, "id")
+	parsed, err := uuid.Parse(groupId)
+	if err != nil {
+		return nil, middleware.ErrBadRequest(err)
+	}
+
+	// Delete the group.
+	err = a.db(req.Context()).
+		Where(&model.Group{
+			TenantID: tenantID,
+			ID:       parsed,
+		}).Delete(&model.Group{}).Error
+	if err != nil {
+		return nil, middleware.ErrNotFound(err)
+	}
+
+	level.Info(a.logger).Log("msg", "deleted group", "group_id", groupId)
+	return nil, err
 }
 
 // addModelMetrics proxies logs related model-metrics to Loki.
