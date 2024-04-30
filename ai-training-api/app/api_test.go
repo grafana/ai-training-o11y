@@ -183,3 +183,49 @@ func TestAppCreatesAndUpdatesMetadata(t *testing.T) {
 	assert.Equal(t, "key2", gpr.Data.Metadata[1].Key)
 	assert.Equal(t, "value2", gpr.Data.Metadata[1].Value)
 }
+
+func TestAppCreatesAndDeletesProcessAndGroup(t *testing.T) {
+	logger := log.NewNopLogger()
+	testApp := NewTestApp(t, logger)
+	require.NotNil(t, testApp)
+	defer testApp.Shutdown()
+
+	httpC := newHTTPClient(t.Name())
+	registerProcessEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/process/new"
+	resp, err := httpC.Post(registerProcessEndpoint, "application/json", bytes.NewBufferString(sampleProcessWithGroupNameJSON))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	cpr := read[createProcessResponse](t, resp)
+	assert.NotEmpty(t, cpr.Data.ID)
+
+	// Delete the process.
+	deleteProcessEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/process/" + cpr.Data.ID.String() + "/delete"
+	req, err := http.NewRequest(http.MethodPost, deleteProcessEndpoint, nil)
+	require.NoError(t, err)
+	resp, err = httpC.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+	// Verify the process was deleted.
+	getProcessEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/process/" + cpr.Data.ID.String()
+	resp, err = httpC.Get(getProcessEndpoint)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+
+	// Delete the group.
+	deleteGroupEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/group/" + cpr.Data.GroupID.String() + "/delete"
+	req, err = http.NewRequest(http.MethodPost, deleteGroupEndpoint, nil)
+	require.NoError(t, err)
+	resp, err = httpC.Do(req)
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	require.Equal(t, http.StatusNoContent, resp.StatusCode)
+
+	// Verify the group was deleted.
+	getGroupEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/group/" + cpr.Data.GroupID.String()
+	resp, err = httpC.Get(getGroupEndpoint)
+	require.NoError(t, err)
+	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+}
