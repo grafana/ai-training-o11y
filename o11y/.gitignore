@@ -11,3 +11,7 @@ dist/
 .ipython
 .local
 .npm
+
+# build stuff
+*.egg-info
+build/**
