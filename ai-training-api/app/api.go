@@ -99,16 +99,14 @@ func (a *App) registerNewProcess(tenantID string, req *http.Request) (interface{
 				return nil, fmt.Errorf("error flattening metadata: %w", err)
 			}
 			for mk, mv := range dataMap {
-				// TODO: Handle non-string values.
-				if _, ok := mv.(string); !ok {
-					continue
-				}
+				valueType, valueBytes := model.MarshalMetadataValue(mv)
 				err = a.db(req.Context()).
 					Model(&model.MetadataKV{}).
 					Create(&model.MetadataKV{
 						TenantID:  tenantID,
 						Key:       mk,
-						Value:     mv.(string),
+						Value:     valueBytes,
+						Type:      valueType,
 						ProcessID: process.ID,
 					}).Error
 				if err != nil {
@@ -237,16 +235,14 @@ func (a *App) updateProcessMetadata(tenantID string, req *http.Request) (interfa
 					}).First(&metadata).Error
 				if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
 					// If the key does not exist, create a new entry.
-					// TODO: Handle non-string values.
-					if _, ok := mv.(string); !ok {
-						continue
-					}
+					valueType, valueBytes := model.MarshalMetadataValue(mv)
 					err = a.db(req.Context()).
 						Model(&model.MetadataKV{}).
 						Create(&model.MetadataKV{
 							TenantID:  tenantID,
 							Key:       mk,
-							Value:     mv.(string),
+							Value:     valueBytes,
+							Type:      valueType,
 							ProcessID: parsed,
 						}).Error
 					if err != nil {
@@ -254,17 +250,15 @@ func (a *App) updateProcessMetadata(tenantID string, req *http.Request) (interfa
 					}
 				} else {
 					// If the key exists, update the value.
-					// TODO: Handle non-string values.
-					if _, ok := mv.(string); !ok {
-						continue
-					}
+					valueType, valueBytes := model.MarshalMetadataValue(mv)
 					err = a.db(req.Context()).
 						Model(&model.MetadataKV{}).
 						Where(&model.MetadataKV{
 							TenantID:  tenantID,
 							Key:       mk,
 							ProcessID: parsed,
-						}).Update("value", mv.(string)).Error
+						}).Update("value", valueBytes).
+						Update("type", valueType).Error
 					if err != nil {
 						return nil, fmt.Errorf("error updating metadata: %w", err)
 					}
