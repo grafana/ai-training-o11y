@@ -12,6 +12,7 @@ class CustomBuildHook(BuildHookInterface):
         build_data['force_include'][go_bin] = "/go-plugin/go-plugin"
         # TODO: Set platform version in the wheel
         # Make it possible to do platform builds based on an env variable
+
     def build_go(self):
         go_bin = shutil.which('go')
         if not go_bin:
