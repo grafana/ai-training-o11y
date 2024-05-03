@@ -1,7 +1,5 @@
-Builds with poetry, build with:
+Builds with hatch. Hatch is best installed with pipx.
 
-poetry run build
+build with:
 
-test with:
-
-poetry run pytest
+hatch build
