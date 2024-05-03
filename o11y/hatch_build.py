@@ -2,7 +2,6 @@ from hatchling.builders.hooks.plugin.interface import BuildHookInterface
 import pathlib
 import shutil
 import subprocess
-import os
 
 class CustomBuildHook(BuildHookInterface):
     def initialize(self, version: str, build_data: dict):
