@@ -1,5 +1,13 @@
 # __init__.py
 import logging
+import pkg_resources
+import subprocess
+
+resouce_package = __name__
+resource_path = 'go-plugin'
+
+# run the binary from resource_path
+subprocess.run([pkg_resources.resource_filename(resouce_package, resource_path)])
 
 # Create logger first, all other modules will use this logger
 logger = logging.getLogger(__name__)

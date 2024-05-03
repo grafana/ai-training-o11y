@@ -9,7 +9,7 @@ class CustomBuildHook(BuildHookInterface):
         build_data['pure_python'] = False
         build_data['artifacts'].extend(["src/o11y"])
         go_bin = self.build_go()
-        build_data['force_include'][go_bin] = "/go-plugin/go-plugin"
+        build_data['force_include'][go_bin] = "/o11y/go-plugin"
         # TODO: Set platform version in the wheel
         # Make it possible to do platform builds based on an env variable
 
