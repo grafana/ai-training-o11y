@@ -26,7 +26,8 @@ const (
 
 	sampleProcessNestedJSON = `{
 		"user_metadata": {
-			"key1": "value1"
+			"key1": "value1",
+			"key2": 2
 		}
 	}`
 	sampleProcessWithGroupNameJSON = `{
@@ -38,7 +39,7 @@ const (
 	sampleUpdateMetadataJSON = `{
 		"user_metadata": {
 			"key1": "completely_different_value",
-			"key2": "value2"
+			"key3": "value3"
 		}
 	}`
 )
@@ -109,9 +110,15 @@ func TestAppCreatesNewProcess(t *testing.T) {
 	require.NoError(t, err)
 	gpr := read[getProcessResponse](t, resp)
 	assert.Equal(t, cpr.Data.ID, gpr.Data.ID)
-	assert.Len(t, gpr.Data.Metadata, 1)
+	assert.Len(t, gpr.Data.Metadata, 2)
 	assert.Equal(t, "key1", gpr.Data.Metadata[0].Key)
-	assert.Equal(t, "value1", gpr.Data.Metadata[0].Value)
+	assert.Equal(t, "string", gpr.Data.Metadata[0].Type)
+	assert.Equal(t, "value1", string(gpr.Data.Metadata[0].Value))
+	assert.Equal(t, "key2", gpr.Data.Metadata[1].Key)
+	assert.Equal(t, "int", gpr.Data.Metadata[1].Type)
+	value, err := model.UnmarshalMetadataValue(gpr.Data.Metadata[1].Value, gpr.Data.Metadata[1].Type)
+	require.NoError(t, err)
+	assert.Equal(t, 2, value)
 }
 
 func TestAppCreatesNewProcessAndGroup(t *testing.T) {
@@ -177,11 +184,18 @@ func TestAppCreatesAndUpdatesMetadata(t *testing.T) {
 	require.NoError(t, err)
 	gpr = read[getProcessResponse](t, resp)
 	assert.Equal(t, cpr.Data.ID, gpr.Data.ID)
-	assert.Len(t, gpr.Data.Metadata, 2)
+	assert.Len(t, gpr.Data.Metadata, 3)
 	assert.Equal(t, "key1", gpr.Data.Metadata[0].Key)
-	assert.Equal(t, "completely_different_value", gpr.Data.Metadata[0].Value)
+	assert.Equal(t, "string", gpr.Data.Metadata[0].Type)
+	assert.Equal(t, "completely_different_value", string(gpr.Data.Metadata[0].Value))
 	assert.Equal(t, "key2", gpr.Data.Metadata[1].Key)
-	assert.Equal(t, "value2", gpr.Data.Metadata[1].Value)
+	assert.Equal(t, "int", gpr.Data.Metadata[1].Type)
+	value, err := model.UnmarshalMetadataValue(gpr.Data.Metadata[1].Value, gpr.Data.Metadata[1].Type)
+	require.NoError(t, err)
+	assert.Equal(t, 2, value)
+	assert.Equal(t, "key3", gpr.Data.Metadata[2].Key)
+	assert.Equal(t, "string", gpr.Data.Metadata[2].Type)
+	assert.Equal(t, "value3", string(gpr.Data.Metadata[2].Value))
 }
 
 func TestAppCreatesAndDeletesProcessAndGroup(t *testing.T) {
