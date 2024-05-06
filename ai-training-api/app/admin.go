@@ -40,10 +40,10 @@ func NewAdmin(app *App) *Admin {
 	}
 
 	tProcesses := template.New("processes")
-	tProcess := template.New("process")
+	tProcesses.Funcs(funcs)
 	processesPageTemplate := template.Must(tProcesses.Parse(processesPageContent))
 
-	tProcesses.Funcs(funcs)
+	tProcess := template.New("process")
 	tProcess.Funcs(funcs)
 	processPageTemplate := template.Must(tProcess.Parse(processPageContent))
 

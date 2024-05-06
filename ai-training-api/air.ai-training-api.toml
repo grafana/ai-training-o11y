@@ -11,7 +11,7 @@ cmd = "BUILD_VERSION=$(cat .git_version) BUILD_COMMIT=$(cat .git_commit) BUILD_B
 # Customize binary.
 full_bin = "./dist/ai-training-api --log.level=debug --const-tenant=0 --database-type=mysql --database-address='user:pass@tcp(db:3306)/aitraining?charset=utf8mb4&parseTime=True&loc=Local'"
 # Watch these filename extensions.
-include_ext = ["go"]
+include_ext = ["go", "tpl", "tmpl", "html"]
 # Ignore these filename extensions or directories.
 exclude_dir = ["tmp", "vendor"]
 # Watch these directories if you specified.
