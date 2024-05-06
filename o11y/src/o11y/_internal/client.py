@@ -5,10 +5,10 @@ import requests
 import json
 import logging
 import os
-import logging_loki
 import logging
 from .util.validate_url import validate_url
 from .. import logger
+import time
 
 
 class Client:
@@ -18,7 +18,6 @@ class Client:
         # We are going to assume that the user has set the credentials in the environment
         # There are other flows but it's the easiest one
         login_string = os.environ.get('GF_AI_TRAINING_CREDS')
-        self.custom_logger = logging.getLogger(__name__ + "-ai-training-o11y-client")
         self.set_credentials(login_string)
 
     def set_credentials(self, login_string):
@@ -57,7 +56,6 @@ class Client:
         if self.process_uuid:
             self.process_uuid = None
             self.user_metadata = None
-            self.custom_logger.handlers.clear()
 
         headers = {
             'Authorization': f'Bearer {self.token}',
@@ -77,21 +75,6 @@ class Client:
             return False
         self.process_uuid = process_uuid
         self.user_metadata = user_metadata
-        self.custom_logger.addHandler(
-            logging_loki.LokiHandler(
-                url=f"{self.url}/api/v1/process/{self.process_uuid}/model-metrics",
-                tags={
-                    # This specific label guarantees that these logs never collide with anything not from this exporter
-                    "grafana_aitraining_o11y_process_uuid": self.process_uuid,
-                    "log_type": "model-metric",
-                },
-                # The LokiHandler doesn't currently allow the use of token auth, we're going to have to add it
-                # or write our own handler, which seems a lot less elegant
-                # We definitely shouldn't use the (supported) basic auth because it's a bad pattern
-                #auth= "Bearer " + self.token,
-                version="1",
-            )
-        )
         return True
 
     # Update user_metadata information
@@ -136,5 +119,38 @@ class Client:
         if not self.process_uuid:
             logging.error("No process registered, unable to send logs")
             return False
-        self.custom_logger.log(logging.INFO, log)
+        
+        keys = chr(31).join(sorted(log.keys()))
+        timestamp = str(time.time_ns())
+        json_data = {
+            "streams": [
+                {
+                    "stream": {
+                        "job": "o11y",
+                    },
+                    "values": [
+                        [
+                            timestamp,
+                            json.dumps(log),
+                            {
+                                "process_uuid": self.process_uuid,
+                                "keys": keys
+                            }
+                        ]
+                    ]
+                }
+            ]
+        }
+
+        response = requests.post(
+            f'{self.url}/api/v1/process/{self.process_uuid}/model-metrics',
+            headers={
+                'Authorization': f'Bearer {self.token}', 'Content-Type': 'application/json'
+                },
+            data=json.dumps(json_data)
+        )
+
+        if response.status_code != 200:
+            logging.error(f'Failed to log model metric: {response.text}')
+            return False
         return True
