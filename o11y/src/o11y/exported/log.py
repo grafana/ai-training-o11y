@@ -15,7 +15,7 @@ def log(log):
         if not isinstance(key, str):
             logger.error("Keys in log must be strings")
             return False
-        if key.contains(chr(31)):
+        if chr(31) in key:
             logger.error("Keys in log must not contain the unit separator character")
             return False
     # Check that all values are numbers
