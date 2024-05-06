@@ -20,11 +20,15 @@ docker: build-ai-training-api build-aitraining-app
 docker-down:
 	docker compose down
 
+.PHONY: exporter
+exporter:
+	cd o11y && hatch build
+
 .PHONY: jupyter
-jupyter:
+jupyter: exporter
 	docker compose -f docker-compose-jupyter.yml up
 
 # This won't work on macs
 .PHONY: jupytorch
-jupytorch:
+jupytorch: exporter-build
 	docker compose -f docker-compose-pytorch.yml up
