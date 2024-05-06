@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <style>{{ stylesheet }}</style>
+  <title>AI Training API - Process</title>
+</head>
+
+<body>
+  <header>
+    <nav>
+      <a href="./process" class="current">Process</a>
+    </nav>
+    <h1>AI Training API - Process</h1>
+  </header>
+  <main>
+    <table width="100%" border="1">
+      <thead>
+        <tr>
+          <th>Tenant ID</th>
+          <th>ID</th>
+          <th>StartTime</th>
+          <th>EndTime</th>
+          <th>Group ID</th>
+          <th>Project</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range $i, $ing := .Process }}
+        <tr>
+          <td>{{ .TenantID }}</td>
+          <td>{{ .ID }}</td>
+          <td>{{ .StartTime }}</td>
+          <td>{{ .EndTime }}</td>
+          <td>{{ .GroupID }}</td>
+          <td>{{ .Project }}</td>
+        </tr>
+        {{ end }}
+      </tbody>
+    </table>
+
+
+    <table width="100%" border="1">
+      <thead>
+        <tr>
+          <th>Key</th>
+          <th>Value</th>
+          <th>Type</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ range $i, $ing := .Process.Metadata }}
+        <tr>
+          <td>{{ .Key }}</td>
+          <td>{{ .Value }}</td>
+          <td>{{ .Type }}</td>
+        </tr>
+        {{ end }}
+      </tbody>
+  </main>
+</body>
+
+</html>
