@@ -278,7 +278,7 @@ func (a *App) updateProcessMetadata(tenantID string, req *http.Request) (interfa
 
 // registerNewGroup registers a new Group and returns a UUID.
 func (a *App) registerNewGroup(tenantID string, req *http.Request) (interface{}, error) {
-	level.Info(a.logger).Log("msg", "request received to register new training")
+	level.Info(a.logger).Log("msg", "request received to register new group")
 
 	// Register a new group.
 	groupId := uuid.New()

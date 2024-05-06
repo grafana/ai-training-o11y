@@ -10,13 +10,20 @@ def init(*, project=None, run=None, metadata=None):
     :param user_metadata: Any user metadata to attach to the run
     :return: None
     """
-    data = {
-        "user_metadata": metadata,
-    }
+    data = {}
+    if metadata:
+        for key in metadata.keys():
+            if key in ["project", "run"]:
+                logger.warning(f"Metadata key '{key}' is redundant with '{key}' in higher scope. It may not behave as expected")
+            if "." in key:
+                logger.error(f"Metadata key '{key}' contains a period, which is not allowed.")
+                return False
+        data['user_metadata'] = metadata
     if project:
         data["project"] = project
     else:
         logger.warning("No project name provided, will be logged to project 'Default'.")
+        data["project"] = "Default"
     if run:
         data["run"] = run
 

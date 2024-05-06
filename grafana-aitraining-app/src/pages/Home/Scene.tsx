@@ -1,21 +1,10 @@
 import { EmbeddedScene, PanelBuilders, SceneApp, SceneAppPage, SceneDataTransformer, SceneFlexItem, SceneFlexLayout, SceneQueryRunner } from '@grafana/scenes';
 import { ROUTES } from '../../constants';
 import { prefixRoute } from '../../utils/utils.routing';
-import { TableCellBackgroundDisplayMode, TableCellDisplayMode, ThresholdsMode } from '@grafana/schema';
+import { ThresholdsMode } from '@grafana/schema';
 
 export const MY_DATASOURCE_REF = {
-  uid: 'grafana-aitraining-app-datasource-uid',
-  type: 'testdata',
-};
-
-const roomsTemperatureQuery = {
-  refId: 'Rooms temperature',
-  datasource: MY_DATASOURCE_REF,
-  scenarioId: 'random_walk',
-  seriesCount: 8,
-  alias: '__house_locations',
-  min: 10,
-  max: 27,
+  uid: 'grafana-aitraining-app-datasource-uid'
 };
 
 export function getRoomsTemperatureTable() {
@@ -45,25 +34,6 @@ export function getRoomsTemperatureTable() {
         },
       ],
     })
-    .setColor({ mode: 'thresholds' })
-    .setCustomFieldConfig('align', 'auto')
-    .setCustomFieldConfig('cellOptions', { type: TableCellDisplayMode.Auto })
-    .setCustomFieldConfig('inspect', false)
-    .setOverrides((b) =>
-      b
-        .matchFieldsWithName('Average temperature')
-        .overrideUnit('celsius')
-        .overrideCustomFieldConfig('cellOptions', {
-          type: TableCellDisplayMode.ColorBackground,
-          mode: TableCellBackgroundDisplayMode.Basic,
-        })
-        .overrideCustomFieldConfig('width', 200)
-        .overrideCustomFieldConfig('align', 'center')
-        .matchFieldsWithName('Room')
-        .overrideLinks([
-          { title: 'Go to room overview', url: '${__url.path}/room/${__value.text}/temperature${__url.params}' },
-        ])
-    )
     .build();
 }
 
@@ -72,7 +42,9 @@ const getTab1Scene = () =>
   new EmbeddedScene({ 
     $data: new SceneQueryRunner({
       datasource: MY_DATASOURCE_REF,
-      queries: [roomsTemperatureQuery],
+      queries: [
+        { refId: 'A', datasource: MY_DATASOURCE_REF}
+      ],
       maxDataPoints: 100,
     }),
 
@@ -83,10 +55,6 @@ const getTab1Scene = () =>
           height: 300,
           body: getRoomsTemperatureTable(),
         }),
-        // new SceneFlexItem({
-        //   ySizing: 'fill',
-        //   body: getRoomsTemperatureStats(),
-        // }),
       ],
     }),
   });
@@ -118,7 +86,6 @@ export const getScene = () => {
             title: 'Project name',
             url: prefixRoute(`${ROUTES.Home}`),
             getScene: getTab1Scene,
-
           }),
           new SceneAppPage({
             title: 'Imma title',
