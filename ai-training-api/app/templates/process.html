@@ -27,7 +27,6 @@
         </tr>
       </thead>
       <tbody>
-        {{ range $i, $ing := .Process }}
         <tr>
           <td>{{ .TenantID }}</td>
           <td>{{ .ID }}</td>
@@ -36,10 +35,11 @@
           <td>{{ .GroupID }}</td>
           <td>{{ .Project }}</td>
         </tr>
-        {{ end }}
       </tbody>
     </table>
 
+    <br/>
+    <br/>
 
     <table width="100%" border="1">
       <thead>
@@ -50,7 +50,7 @@
         </tr>
       </thead>
       <tbody>
-        {{ range $i, $ing := .Process.Metadata }}
+        {{ range $i, $ing := .Metadata }}
         <tr>
           <td>{{ .Key }}</td>
           <td>{{ .Value }}</td>

@@ -127,12 +127,7 @@ func (a *Admin) process(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	type processResponse struct {
-		Process model.Process
-	}
-
-	data := processResponse{process}
-	err = a.processPageTemplate.Execute(w, data)
+	err = a.processPageTemplate.Execute(w, process)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
