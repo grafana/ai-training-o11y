@@ -7,4 +7,4 @@ def log(log):
     :return: None
     """
     # In principle we should validate that this is json in the future, but for right now let's not
-    client.send_log(log)
+    client.send_model_metrics(log)

@@ -112,7 +112,7 @@ class Client:
             return False
         return True
 
-    def send_log(self, log):
+    def send_model_metrics(self, log):
         if not self.process_uuid:
             logging.error("No process registered, unable to send logs")
             return False
@@ -131,7 +131,8 @@ class Client:
                             json.dumps(log),
                             {
                                 "process_uuid": self.process_uuid,
-                                "keys": keys
+                                "keys": keys,
+                                "type": "model-metrics"
                             }
                         ]
                     ]
