@@ -51,7 +51,7 @@ class Client:
     # POST /api/v1/process/new
     # Takes a JSON object with a key “user_metadata” containing a dictionary of metadata
     # Returns a JSON object with a key “process_uuid” containing the UUID of the process
-    def register_process(self, user_metadata):
+    def register_process(self, data):
         # If the process is currently registered, clear everything from it
         if self.process_uuid:
             self.process_uuid = None
@@ -60,9 +60,6 @@ class Client:
         headers = {
             'Authorization': f'Bearer {self.token}',
             'Content-Type': 'application/json'
-        }
-        data = {
-            'user_metadata': user_metadata
         }
         response = requests.post(f'{self.url}/api/v1/process/new', headers=headers, data=json.dumps(data))
         if response.status_code != 200:
@@ -74,7 +71,7 @@ class Client:
             logging.error(f'Failed to register with error: {response.text}')
             return False
         self.process_uuid = process_uuid
-        self.user_metadata = user_metadata
+        self.user_metadata = data['user_metadata']
         return True
 
     # Update user_metadata information
