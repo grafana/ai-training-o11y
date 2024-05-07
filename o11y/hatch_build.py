@@ -88,7 +88,16 @@ class CustomBuildHook(BuildHookInterface):
                 'GOOS': go_os_flag,
                 'GOARCH': go_arch_flag,
             }
-            env['GOCACHE'] = os.path.join(os.getcwd(), '.cache', 'go-build')
+            go_cache_dir = os.path.join(os.getcwd(), '.cache', 'go-build')
+            env['GOCACHE'] = go_cache_dir
+            # make the go cache directory if it does not exist
+            if not os.path.exists(go_cache_dir):
+                os.makedirs(go_cache_dir)
+            go_mod_cache_dir = os.path.join(os.getcwd(), '.cache', 'go-mod')
+            # make the go mod cache directory if it does not exist
+            if not os.path.exists(go_mod_cache_dir):
+                os.makedirs(go_mod_cache_dir)
+            env['GOMODCACHE'] = os.path.join(os.getcwd(), '.cache', 'go-mod')
 
 
         go_build_cmd = [
@@ -113,5 +122,9 @@ class CustomBuildHook(BuildHookInterface):
         except subprocess.CalledProcessError as e:
             error_message = f"Error building Go plugin:\n{e.stderr}"
             raise RuntimeError(error_message) from e
+        
+        # rm -rf the gocache and gomodcache
+        shutil.rmtree(os.path.join(os.getcwd(), '.cache', 'go-build'))
+        shutil.rmtree(os.path.join(os.getcwd(), '.cache', 'go-mod'))
         
         return pathlib.Path("src", "go-plugin", "dist", "go-plugin").as_posix()
