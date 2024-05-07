@@ -6,7 +6,7 @@ apps:
     org_name: 'Grafana Labs'
     disabled: false
     jsonData:
-      apiUrl: http://default-url.com
+      apiUrl: http://localhost:8000
       isApiKeySet: true
     secureJsonData:
       apiKey: secret-key
