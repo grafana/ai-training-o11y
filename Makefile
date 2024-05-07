@@ -62,3 +62,9 @@ jupyter: jupyter-exporter
 .PHONY: jupytorch
 jupytorch: exporter-build
 	docker compose -f docker-compose-pytorch.yml up
+
+.PHONY: clean
+clean:
+	cd o11y && rm -rf __pycache__ .cache .ipython .ipynb_checkpoints .jupyter .local .npm dist
+	cd o11y/src/go-plugin && rm -rf dist
+# This only cleans the o11y build folders, not the other two modules
