@@ -20,7 +20,7 @@ class CustomBuildHook(BuildHookInterface):
             go_arch_flag = None
         elif target_os == 'windows':
             if target_arch == 'arm64':
-                build_data['tag'] = f"py3-none-win_arm64"
+                build_data['tag'] = f"py3-none-win_aarch64"
                 go_arch_flag = "arm64"
             else:
                 build_data['tag'] = f"py3-none-win_amd64"
@@ -28,7 +28,7 @@ class CustomBuildHook(BuildHookInterface):
             go_os_flag = "windows"
         elif target_os == 'mac':
             if target_arch == 'arm64':
-                build_data['tag'] = f"py3-none-macosx_13_0_arm64"
+                build_data['tag'] = f"py3-none-macosx_13_0_aarch64"
                 go_arch_flag = "arm64"
             else:
                 build_data['tag'] = f"py3-none-macosx_13_0_x86_64"
@@ -36,7 +36,7 @@ class CustomBuildHook(BuildHookInterface):
             go_os_flag = "darwin"
         elif target_os == 'linux':
             if target_arch == 'arm64':
-                build_data['tag'] = f"py3-none-linux_arm64"
+                build_data['tag'] = f"py3-none-linux_aarch64"
                 go_arch_flag = "arm64"
             else:
                 build_data['tag'] = f"py3-none-linux_x86_64"
@@ -88,16 +88,23 @@ class CustomBuildHook(BuildHookInterface):
                 'GOOS': go_os_flag,
                 'GOARCH': go_arch_flag,
             }
+            # Set go cache directory
             go_cache_dir = os.path.join(os.getcwd(), '.cache', 'go-build')
             env['GOCACHE'] = go_cache_dir
             # make the go cache directory if it does not exist
             if not os.path.exists(go_cache_dir):
                 os.makedirs(go_cache_dir)
+            # Set go mod cache directory
             go_mod_cache_dir = os.path.join(os.getcwd(), '.cache', 'go-mod')
             # make the go mod cache directory if it does not exist
             if not os.path.exists(go_mod_cache_dir):
                 os.makedirs(go_mod_cache_dir)
             env['GOMODCACHE'] = os.path.join(os.getcwd(), '.cache', 'go-mod')
+            # Set gopath
+            go_path_dir = os.path.join(os.getcwd(), '.cache', 'go-path')
+            if not os.path.exists(go_path_dir):
+                os.makedirs(go_path_dir)
+            env['GOPATH'] = go_path_dir
 
 
         go_build_cmd = [
@@ -122,9 +129,5 @@ class CustomBuildHook(BuildHookInterface):
         except subprocess.CalledProcessError as e:
             error_message = f"Error building Go plugin:\n{e.stderr}"
             raise RuntimeError(error_message) from e
-        
-        # rm -rf the gocache and gomodcache
-        shutil.rmtree(os.path.join(os.getcwd(), '.cache', 'go-build'))
-        shutil.rmtree(os.path.join(os.getcwd(), '.cache', 'go-mod'))
         
         return pathlib.Path("src", "go-plugin", "dist", "go-plugin").as_posix()
