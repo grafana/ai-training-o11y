@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/go-kit/log/level"
 	"github.com/google/uuid"
@@ -46,6 +47,7 @@ func (a *App) registerNewProcess(tenantID string, req *http.Request) (interface{
 	process := &model.Process{}
 	process.ID = uuid.New()
 	process.TenantID = tenantID
+	process.StartTime = time.Now()
 
 	// Store process in DB.
 	err := a.db(req.Context()).Model(&model.Process{}).Create(process).Error

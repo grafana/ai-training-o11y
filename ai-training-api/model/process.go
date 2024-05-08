@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type Process struct {
@@ -29,4 +30,17 @@ type Process struct {
 	// TODO: cap at 1024?
 	// We are storing this in a separate table, so not serializing it here.
 	Metadata []MetadataKV `json:"metadata" gorm:"-"`
+}
+
+// Add an AfterFind hook that updates EndTime if the StartTime is older than
+// an hour. This is to handle the case where the process is started but never
+// marked complete (e.g. due to a crash). The EndTime should be set to the
+// StartTime + 1 hour.
+func (p *Process) AfterFind(tx *gorm.DB) error {
+	tx.Logger.Info(tx.Statement.Context, "AfterFind hook called to update EndTime")
+	if p.EndTime.IsZero() && time.Since(p.StartTime) > time.Hour {
+		p.EndTime = p.StartTime.Add(time.Hour)
+		return tx.Save(p).Error
+	}
+	return nil
 }
