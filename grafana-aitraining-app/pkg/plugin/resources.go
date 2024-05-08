@@ -3,6 +3,10 @@ package plugin
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
+
+	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 )
 
 // handlePing is an example HTTP GET resource that returns a {"message": "ok"} JSON response.
@@ -53,9 +57,22 @@ func (a *App) handleProjects(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func metadataHandler(target string) func(http.ResponseWriter, *http.Request) {
+	remote, err := url.Parse(target)
+	if err != nil {
+		log.DefaultLogger.Error(err.Error())		
+	}
+	p := httputil.NewSingleHostReverseProxy(remote)
+	return func(w http.ResponseWriter, r *http.Request) {
+		r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
+		p.ServeHTTP(w, r)
+	}
+}
+
 // registerRoutes takes a *http.ServeMux and registers some HTTP handlers.
 func (a *App) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/ping", a.handlePing)
 	mux.HandleFunc("/echo", a.handleEcho)
 	mux.HandleFunc("/projects", a.handleProjects)
+	mux.HandleFunc("/metadata/", metadataHandler("http://localhost:8000")) // Use config for this
 }
