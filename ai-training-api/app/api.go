@@ -303,6 +303,7 @@ func (a *App) getGroup(tenantID string, req *http.Request) (interface{}, error) 
 
 	group := model.Group{}
 	err = a.db(req.Context()).
+		Preload("Processes").
 		Where(&model.Group{
 			TenantID: tenantID,
 			ID:       parsed,
