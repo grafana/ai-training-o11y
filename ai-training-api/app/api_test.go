@@ -151,6 +151,8 @@ func TestAppCreatesNewProcessAndGroup(t *testing.T) {
 	require.NoError(t, err)
 	ggr := read[getGroupResponse](t, resp)
 	assert.Equal(t, gpr.Data.GroupID, &ggr.Data.ID)
+	assert.Len(t, ggr.Data.Processes, 1)
+	assert.Equal(t, gpr.Data.ID, ggr.Data.Processes[0].ID)
 }
 
 func TestAppCreatesAndUpdatesMetadata(t *testing.T) {
