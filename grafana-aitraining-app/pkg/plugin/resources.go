@@ -63,7 +63,10 @@ func metadataHandler(target string) func(http.ResponseWriter, *http.Request) {
 		log.DefaultLogger.Error(err.Error())		
 	}
 	p := httputil.NewSingleHostReverseProxy(remote)
+
 	return func(w http.ResponseWriter, r *http.Request) {
+		// Remove the string "/metadata" from the request URL
+		r.URL.Path = r.URL.Path[len("/metadata"):]
 		r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
 		p.ServeHTTP(w, r)
 	}
@@ -74,5 +77,5 @@ func (a *App) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/ping", a.handlePing)
 	mux.HandleFunc("/echo", a.handleEcho)
 	mux.HandleFunc("/projects", a.handleProjects)
-	mux.HandleFunc("/metadata/", metadataHandler("http://localhost:8000")) // Use config for this
+	mux.HandleFunc("/metadata/", metadataHandler("http://ai-training-api:8000")) // Use config for this
 }
