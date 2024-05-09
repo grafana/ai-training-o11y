@@ -1,39 +1,21 @@
 import { EmbeddedScene, PanelBuilders, SceneApp, SceneAppPage, SceneDataTransformer, SceneFlexItem, SceneFlexLayout, SceneQueryRunner } from '@grafana/scenes';
 import { ROUTES } from '../../constants';
 import { prefixRoute } from '../../utils/utils.routing';
-import { ThresholdsMode } from '@grafana/schema';
 
 export const MY_DATASOURCE_REF = {
   uid: 'grafana-aitraining-app-datasource-uid'
 };
 
-export function getRoomsTemperatureTable() {
+export function getProcessesTable() {
   const data = new SceneDataTransformer({
     transformations: []});
 
   return PanelBuilders.table()
-    .setTitle('Room temperature overview')
+    .setTitle('Processes')
     .setData(data)
     .setHoverHeader(true)
     .setDisplayMode('transparent')
-    .setOption('sortBy', [{ displayName: 'Average temperature' }])
-    .setThresholds({
-      mode: ThresholdsMode.Absolute,
-      steps: [
-        {
-          color: 'light-blue',
-          value: 0,
-        },
-        {
-          color: 'orange',
-          value: 19,
-        },
-        {
-          color: 'dark-red',
-          value: 26,
-        },
-      ],
-    })
+    .setOption('sortBy', [{ displayName: 'start_time' }])
     .build();
 }
 
@@ -45,7 +27,6 @@ const getTab1Scene = () =>
       queries: [
         { refId: 'A', datasource: MY_DATASOURCE_REF}
       ],
-      maxDataPoints: 100,
     }),
 
     body: new SceneFlexLayout({
@@ -53,7 +34,7 @@ const getTab1Scene = () =>
       children: [
         new SceneFlexItem({
           height: 300,
-          body: getRoomsTemperatureTable(),
+          body: getProcessesTable(),
         }),
       ],
     }),
@@ -83,13 +64,13 @@ export const getScene = () => {
         getScene: getTab1Scene,
         tabs: [
           new SceneAppPage({
-            title: 'Project name',
+            title: 'Processes',
             url: prefixRoute(`${ROUTES.Home}`),
             getScene: getTab1Scene,
           }),
           new SceneAppPage({
-            title: 'Imma title',
-            url: prefixRoute(`${ROUTES.Home}/tab-two`),
+            title: 'Graphs',
+            url: prefixRoute(`${ROUTES.Home}/graphs`),
             getScene: getTab2Scene,
           }),
         ],
