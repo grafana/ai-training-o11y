@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/google/uuid"
 	"github.com/prometheus/common/promlog"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -185,17 +187,9 @@ func TestAppCreatesAndUpdatesMetadata(t *testing.T) {
 	gpr = read[getProcessResponse](t, resp)
 	assert.Equal(t, cpr.Data.ID, gpr.Data.ID)
 	assert.Len(t, gpr.Data.Metadata, 3)
-	assert.Equal(t, "key1", gpr.Data.Metadata[0].Key)
-	assert.Equal(t, "string", gpr.Data.Metadata[0].Type)
-	assert.Equal(t, "completely_different_value", string(gpr.Data.Metadata[0].Value))
-	assert.Equal(t, "key2", gpr.Data.Metadata[1].Key)
-	assert.Equal(t, "int", gpr.Data.Metadata[1].Type)
-	value, err := model.UnmarshalMetadataValue(gpr.Data.Metadata[1].Value, gpr.Data.Metadata[1].Type)
-	require.NoError(t, err)
-	assert.Equal(t, 2, value)
-	assert.Equal(t, "key3", gpr.Data.Metadata[2].Key)
-	assert.Equal(t, "string", gpr.Data.Metadata[2].Type)
-	assert.Equal(t, "value3", string(gpr.Data.Metadata[2].Value))
+	assert.Contains(t, gpr.Data.Metadata, model.MetadataKV{TenantID: "0", Key: "key1", Type: "string", Value: []byte("completely_different_value"), ProcessID: cpr.Data.ID})
+	assert.Contains(t, gpr.Data.Metadata, model.MetadataKV{TenantID: "0", Key: "key2", Type: "int", Value: []byte("2"), ProcessID: cpr.Data.ID})
+	assert.Contains(t, gpr.Data.Metadata, model.MetadataKV{TenantID: "0", Key: "key3", Type: "string", Value: []byte("value3"), ProcessID: cpr.Data.ID})
 }
 
 func TestAppCreatesAndDeletesProcessAndGroup(t *testing.T) {
@@ -242,4 +236,30 @@ func TestAppCreatesAndDeletesProcessAndGroup(t *testing.T) {
 	resp, err = httpC.Get(getGroupEndpoint)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusNotFound, resp.StatusCode)
+}
+
+func TestAppSetsCorrectEndTime(t *testing.T) {
+	logger := log.NewNopLogger()
+	testApp := NewTestApp(t, logger)
+	require.NotNil(t, testApp)
+	defer testApp.Shutdown()
+
+	// Create a process with an old start time directly in the DB.
+	startTime := time.Now().Add(-2 * time.Hour)
+	process := model.Process{
+		ID:        uuid.New(),
+		TenantID:  "0",
+		StartTime: startTime,
+	}
+	db := testApp.db(context.Background())
+	require.NoError(t, db.Create(&process).Error)
+
+	// Query the process and verify that the end time was set correctly.
+	httpC := newHTTPClient(t.Name())
+	getProcessEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/process/" + process.ID.String()
+	resp, err := httpC.Get(getProcessEndpoint)
+	require.NoError(t, err)
+	gpr := read[getProcessResponse](t, resp)
+	assert.Equal(t, process.ID, gpr.Data.ID)
+	assert.Equal(t, gpr.Data.EndTime, gpr.Data.StartTime.Add(time.Hour))
 }
