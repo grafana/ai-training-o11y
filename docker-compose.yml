@@ -8,6 +8,7 @@ services:
       - ./grafana-aitraining-app/dist:/var/lib/grafana/plugins/grafana-aitraining-app
       - ./.config/grafana/config:/etc/grafana-config
       - ./.config/grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./.config/grafana/plugins:/etc/grafana/provisioning/plugins
       # We don't need these for now, but may want to provision dashboards for the dev env later
       # - ./grafana/dashboards-provisioning:/etc/grafana/provisioning/dashboards
       # - ./grafana/dashboards:/var/lib/grafana/dashboards
