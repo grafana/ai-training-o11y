@@ -61,6 +61,11 @@ type getGroupResponse struct {
 	Data model.Group `json:"data"`
 }
 
+type getGroupsResponse struct {
+	middleware.ResponseWrapper
+	Data []model.Group `json:"data"`
+}
+
 func read[T any](t *testing.T, resp *http.Response) T {
 	t.Helper()
 	body, err := io.ReadAll(resp.Body)
@@ -264,4 +269,81 @@ func TestAppSetsCorrectEndTime(t *testing.T) {
 	gpr := read[getProcessResponse](t, resp)
 	assert.Equal(t, process.ID, gpr.Data.ID)
 	assert.Equal(t, gpr.Data.EndTime, gpr.Data.StartTime.Add(time.Hour))
+}
+
+// This tests for the case where the same group name is added to two process
+// metadatas. The group should be created only once and both processes should
+// be added to the group.
+func TestAppAddsProcessesToAGroup(t *testing.T) {
+	logger := log.NewNopLogger()
+	testApp := NewTestApp(t, logger)
+	require.NotNil(t, testApp)
+	defer testApp.Shutdown()
+
+	httpC := newHTTPClient(t.Name())
+	registerProcessEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/process/new"
+	resp, err := httpC.Post(registerProcessEndpoint, "application/json", bytes.NewBufferString(sampleProcessWithGroupNameJSON))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	cpr := read[createProcessResponse](t, resp)
+	assert.NotEmpty(t, cpr.Data.ID)
+
+	// Create a new process and add it to the same group.
+	resp, err = httpC.Post(registerProcessEndpoint, "application/json", bytes.NewBufferString(sampleProcessWithGroupNameJSON))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	cpr2 := read[createProcessResponse](t, resp)
+	assert.NotEmpty(t, cpr2.Data.ID)
+
+	// Get all groups and verify that the processes were added to the group.
+	getGroupsEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/groups"
+	resp, err = httpC.Get(getGroupsEndpoint)
+	require.NoError(t, err)
+	ggsr := read[getGroupsResponse](t, resp)
+	assert.Len(t, ggsr.Data, 1)
+	assert.Len(t, ggsr.Data[0].Processes, 2)
+	assert.Contains(t, ggsr.Data[0].Processes, cpr.Data)
+	assert.Contains(t, ggsr.Data[0].Processes, cpr2.Data)
+}
+
+// This tests for the case where two processes were created independently and
+// then added to a group. This path is likely to be triggered via the UI.
+func TestAppCreatesGroupWithMultipleProcesses(t *testing.T) {
+	logger := log.NewNopLogger()
+	testApp := NewTestApp(t, logger)
+	require.NotNil(t, testApp)
+	defer testApp.Shutdown()
+
+	// Create two processes without group names.
+	httpC := newHTTPClient(t.Name())
+	registerProcessEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/process/new"
+	resp, err := httpC.Post(registerProcessEndpoint, "application/json", bytes.NewBufferString(sampleProcessNestedJSON))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	cpr := read[createProcessResponse](t, resp)
+	assert.NotEmpty(t, cpr.Data.ID)
+
+	resp, err = httpC.Post(registerProcessEndpoint, "application/json", bytes.NewBufferString(sampleProcessNestedJSON))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+	cpr2 := read[createProcessResponse](t, resp)
+	assert.NotEmpty(t, cpr2.Data.ID)
+
+	// Create a group with the two processes.
+	createGroupEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/group/new"
+	resp, err = httpC.Post(createGroupEndpoint, "application/json", bytes.NewBufferString(`{"process_ids": ["`+cpr.Data.ID.String()+`", "`+cpr2.Data.ID.String()+`"]}`))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	// Get all groups and verify that the processes were added to the group.
+	getGroupsEndpoint := "http://" + testApp.server.HTTPListenAddr().String() + "/api/v1/groups"
+	resp, err = httpC.Get(getGroupsEndpoint)
+	require.NoError(t, err)
+	ggsr := read[getGroupsResponse](t, resp)
+	assert.Len(t, ggsr.Data, 1)
+	assert.Len(t, ggsr.Data[0].Processes, 2)
+	assert.Equal(t, ggsr.Data[0].Processes[0].ID, cpr.Data.ID)
+	assert.Equal(t, ggsr.Data[0].Processes[1].ID, cpr2.Data.ID)
 }
