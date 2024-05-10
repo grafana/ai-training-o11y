@@ -2,6 +2,8 @@ package plugin
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
@@ -22,11 +24,32 @@ var (
 // App is an example app backend plugin which can respond to data queries.
 type App struct {
 	backend.CallResourceHandler
+
+	metadataUrl string
+	metadataToken string
 }
 
 // NewApp creates a new example *App instance.
-func NewApp(_ context.Context, _ backend.AppInstanceSettings) (instancemgmt.Instance, error) {
+func NewApp(_ context.Context, appSettings backend.AppInstanceSettings) (instancemgmt.Instance, error) {
 	var app App
+
+	var settings map[string]interface{}
+    err := json.Unmarshal(appSettings.JSONData, &settings)
+    if err != nil {
+        return nil, err
+    }
+
+    value, ok := settings["metadataUrl"]
+    if !ok {
+        return nil, errors.New("metadataUrl not found in settings")
+    }
+
+    switch url := value.(type) {
+    case string:
+        app.metadataUrl = url
+    default:
+        return nil, errors.New("metadataUrl is not a string")
+    }
 
 	// Use a httpadapter (provided by the SDK) for resource calls. This allows us
 	// to use a *http.ServeMux for resource calls, so we can map multiple routes

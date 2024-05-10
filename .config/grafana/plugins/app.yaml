@@ -6,7 +6,7 @@ apps:
     org_name: 'Grafana Labs'
     disabled: false
     jsonData:
-      apiUrl: http://ai-training-api:8000
+      metadataUrl: http://ai-training-api:8000
       isApiKeySet: true
     secureJsonData:
       apiKey: secret-key

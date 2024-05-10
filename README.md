@@ -11,6 +11,7 @@ Layout is as follows:
 ## Development
 Requires:
 - Python (3.8 or later)
+- Hatch (best installed via "pipx install hatch" if you have pipx)
 - Node (20 or later)
 - Go (1.22 or later)
 - Docker

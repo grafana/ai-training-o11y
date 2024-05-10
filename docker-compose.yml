@@ -60,6 +60,6 @@ services:
     depends_on:
       - db
 
-# # Ensures data is persisted across container restarts
-# volumes:
-#   postgres_data:
+networks:
+  shared-network:
+    name: my-shared-network

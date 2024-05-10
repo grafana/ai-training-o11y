@@ -60,5 +60,5 @@ func metadataHandler(target string) func(http.ResponseWriter, *http.Request) {
 func (a *App) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/ping", a.handlePing)
 	mux.HandleFunc("/echo", a.handleEcho)
-	mux.HandleFunc("/metadata/", metadataHandler("http://ai-training-api:8000")) // Use config for this
+	mux.HandleFunc("/metadata/", metadataHandler(a.metadataUrl)) // Use config for this
 }

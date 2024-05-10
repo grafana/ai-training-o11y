@@ -112,13 +112,26 @@ class Client:
             return False
         return True
 
-    def send_model_metrics(self, log):
+    def send_model_metrics(self, log, *, x_axis=None, section=None):
         if not self.process_uuid:
             logging.error("No process registered, unable to send logs")
             return False
         
-        keys = chr(31).join(sorted(log.keys()))
         timestamp = str(time.time_ns())
+
+        metadata = {
+            "process_uuid": self.process_uuid,
+            "type": "model-metrics"
+        }
+
+        if x_axis:
+            x_key = list(x_axis.keys())[0]
+            metadata['x_axis'] = x_key
+            metadata['x_value'] = str(x_axis[x_key])
+
+        if section:
+            metadata['section'] = section
+
         json_data = {
             "streams": [
                 {
@@ -129,11 +142,7 @@ class Client:
                         [
                             timestamp,
                             json.dumps(log),
-                            {
-                                "process_uuid": self.process_uuid,
-                                "keys": keys,
-                                "type": "model-metrics"
-                            }
+                            metadata,
                         ]
                     ]
                 }
