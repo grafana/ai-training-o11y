@@ -1,6 +1,5 @@
 # This will build the docker image for ai-training-api
 build-ai-training-api:
-	cd ai-training-api && go mod vendor
 	docker build --target development -t grafana/ai-training-api -f ./ai-training-api/Dockerfile .
 
 build-ai-training-api-prod:
