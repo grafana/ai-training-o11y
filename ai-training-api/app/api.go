@@ -21,6 +21,7 @@ import (
 
 const (
 	listProcessLimit = 100
+	limitGroupLimit  = 10
 )
 
 // RegisterAPI registers all routes to the router.
@@ -36,6 +37,7 @@ func (app *App) registerAPI(router *mux.Router) {
 
 	router.HandleFunc("/group/new", requestMiddleware(app.registerNewGroup)).Methods("POST")
 	router.HandleFunc("/group/{id}", requestMiddleware(app.getGroup)).Methods("GET")
+	router.HandleFunc("/groups", requestMiddleware(app.getGroups)).Methods("GET")
 	router.HandleFunc("/group/{id}/delete", requestMiddleware(app.deleteGroup)).Methods("POST")
 }
 
@@ -77,20 +79,31 @@ func (a *App) registerNewProcess(tenantID string, req *http.Request) (interface{
 			process.Project = value.(string)
 			continue
 		case "group":
-			// Store group information in the Group table.
-			groupID := uuid.New()
+			// Check if the group already exists.
+			groupName := value.(string)
+			var group model.Group
 			err = a.db(req.Context()).
-				Model(&model.Group{}).
-				Create(&model.Group{
-					TenantID:  tenantID,
-					ID:        groupID,
-					Name:      value.(string),
-					Processes: []model.Process{*process},
-				}).Error
-			if err != nil {
-				return nil, fmt.Errorf("error creating group: %w", err)
+				Where(&model.Group{
+					TenantID: tenantID,
+					Name:     groupName,
+				}).First(&group).Error
+			if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
+				// If the group does not exist, create a new group.
+				groupID := uuid.New()
+				err = a.db(req.Context()).
+					Model(&model.Group{}).
+					Create(&model.Group{
+						TenantID: tenantID,
+						ID:       groupID,
+						Name:     value.(string),
+					}).Error
+				if err != nil {
+					return nil, fmt.Errorf("error creating group: %w", err)
+				}
+				process.GroupID = &groupID
+			} else {
+				process.GroupID = &group.ID
 			}
-			process.GroupID = &groupID
 			continue
 		case "user_metadata":
 			// Store metadata information in the Metadata table.
@@ -278,17 +291,47 @@ func (a *App) updateProcessMetadata(tenantID string, req *http.Request) (interfa
 	return model.Process{ID: parsed}, err
 }
 
+type registerNewGroupRequest struct {
+	Name       string      `json:"name"`
+	ProcessIDs []uuid.UUID `json:"process_ids"`
+}
+
 // registerNewGroup registers a new Group and returns a UUID.
 func (a *App) registerNewGroup(tenantID string, req *http.Request) (interface{}, error) {
 	level.Info(a.logger).Log("msg", "request received to register new group")
 
-	// Register a new group.
-	groupId := uuid.New()
+	// Read and parse request body.
+	body, err := io.ReadAll(req.Body)
+	if err != nil {
+		return nil, middleware.ErrBadRequest(err)
+	}
+	defer req.Body.Close()
+	var data = registerNewGroupRequest{}
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		return nil, middleware.ErrBadRequest(err)
+	}
 
-	err := a.db(req.Context()).Create(&model.Group{
+	fmt.Println("YOLOOOOOOOOOOO", data)
+
+	// Create unique group ID.
+	groupId := uuid.New()
+	err = a.db(req.Context()).Create(&model.Group{
 		TenantID: tenantID,
 		ID:       groupId,
+		Name:     data.Name,
 	}).Error
+	if err != nil {
+		return nil, fmt.Errorf("error creating group: %w", err)
+	}
+
+	// Add processes to the group.
+	err = a.db(req.Context()).Model(&model.Process{}).
+		Where("id IN ?", data.ProcessIDs).
+		Update("group_id", groupId).Error
+	if err != nil {
+		return nil, fmt.Errorf("error adding processes to group: %w", err)
+	}
 
 	level.Info(a.logger).Log("msg", "registered new group", "group_id", groupId)
 	// Return the groupId.
@@ -316,6 +359,23 @@ func (a *App) getGroup(tenantID string, req *http.Request) (interface{}, error) 
 
 	level.Info(a.logger).Log("msg", "found group", "group_id", groupId)
 	return group, err
+}
+
+// getGroups returns a list of all groups.
+// It limits the number of groups returned to limitGroupLimit.
+func (a *App) getGroups(tenantID string, req *http.Request) (interface{}, error) {
+	groups := []model.Group{}
+	err := a.db(req.Context()).
+		Preload("Processes").
+		Where(&model.Group{
+			TenantID: tenantID,
+		}).Find(&groups).Limit(limitGroupLimit).Error
+	if err != nil {
+		return nil, middleware.ErrNotFound(err)
+	}
+
+	level.Info(a.logger).Log("msg", "found groups", "groups", groups)
+	return groups, err
 }
 
 // deleteGroup deletes a group by ID.
