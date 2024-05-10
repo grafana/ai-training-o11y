@@ -15,7 +15,7 @@ Requires:
 - Node (20 or later)
 - Go (1.22 or later)
 - Docker
-- Yarn
+- Yarn (4.1.1)
 - Make
 - Mage
 
