@@ -23,11 +23,6 @@ docker: build-ai-training-api build-aitraining-app
 docker-down:
 	docker compose down
 
-# Builds the exporter for your host operating system and architecture
-.PHONY: exporter
-exporter:
-	cd o11y && hatch build -t wheel
-
 # Builds the exporter for whatever your processor architecture is and linux for docker
 .PHONY: jupyter-exporter
 jupyter-exporter:
