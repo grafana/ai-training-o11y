@@ -24,7 +24,7 @@ def log(log, *, x_axis=None):
 
 
     if x_axis is None:
-        client.send_model_metrics(log, section=section)
+        client.send_model_metrics(log)
         return
 
     # Check if x_axis exists
