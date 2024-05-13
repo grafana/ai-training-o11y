@@ -112,7 +112,7 @@ class Client:
             return False
         return True
 
-    def send_model_metrics(self, log, *, x_axis=None, section=None):
+    def send_model_metrics(self, log, *, x_axis=None):
         if not self.process_uuid:
             logging.error("No process registered, unable to send logs")
             return False
@@ -128,9 +128,6 @@ class Client:
             x_key = list(x_axis.keys())[0]
             metadata['x_axis'] = x_key
             metadata['x_value'] = str(x_axis[x_key])
-
-        if section:
-            metadata['section'] = section
 
         json_data = {
             "streams": [
