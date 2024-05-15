@@ -7,7 +7,7 @@ export const Routes = () => {
   return (
     <Switch>
       <Route path={prefixRoute(':path*')} component={Home} />
-      <Redirect to={prefixRoute('page-one')} />
+      <Redirect to={prefixRoute('')} />
     </Switch>
   );
 };
