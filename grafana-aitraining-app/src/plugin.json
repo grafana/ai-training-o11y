@@ -23,7 +23,7 @@
     {
       "type": "page",
       "name": "Home",
-      "path": "/a/%PLUGIN_ID%/home",
+      "path": "/a/%PLUGIN_ID%/",
       "role": "Admin",
       "addToNav": true,
       "defaultNav": true
