@@ -1,35 +1,36 @@
-import React from 'react';
-import { LinkButton, useStyles2 } from '@grafana/ui';
+import React, { useEffect } from 'react';
+import { Tab, TabsBar } from '@grafana/ui';
 import { useParams } from 'react-router-dom';
 import { PluginPage } from '@grafana/runtime';
-import { testIds } from '../../components/testIds';
 import { prefixRoute } from 'utils/utils.routing';
-import { css } from '@emotion/css';
-import { GrafanaTheme2 } from '@grafana/data';
+import { PageLayoutType } from '@grafana/data';
+import { useTabStore } from 'utils/state';
 
 
 export const Home = () => {
-  const params = useParams();
-  console.log('Path arguments:', params);
-  const s = useStyles2(getStyles);
+  const params = useParams<{path: string}>();
+
+  // What tab we are on
+  let tabFromUrl = params['path']?.split('/')[0];
+  tabFromUrl = tabFromUrl === 'table' || tabFromUrl === 'graphs' ? tabFromUrl : 'table';
+  const setTab = useTabStore((state) => state.set);
+  const getTab = useTabStore((state) => state.tab);
+
+  useEffect(() => {
+    setTab(tabFromUrl);
+  }, [tabFromUrl, setTab]);
 
 
   return (
-    <PluginPage>
-      <div data-testid={testIds.pageOne.container}>
-        This is page one.
-        <div className={s.marginTop}>
-          <LinkButton data-testid={testIds.pageOne.navigateToFour} href={prefixRoute('two')}>
-            Full-width page example
-          </LinkButton>
-        </div>
-      </div>
+    <PluginPage
+      layout={PageLayoutType.Canvas}
+    >
+      <TabsBar>
+        <Tab label="Process table" icon='table' href={prefixRoute('table')} active={getTab === 'table'}>
+        </Tab>
+        <Tab label="Process graphs" icon='graph-bar' href={prefixRoute('graphs')} active={getTab === 'graphs'}>
+        </Tab>
+      </TabsBar>
     </PluginPage>
   );
 };
-
-const getStyles = (theme: GrafanaTheme2) => ({
-  marginTop: css`
-    margin-top: ${theme.spacing(2)};
-  `,
-});
