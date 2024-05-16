@@ -5,7 +5,23 @@ import { PluginPage } from '@grafana/runtime';
 import { prefixRoute } from 'utils/utils.routing';
 import { PageLayoutType } from '@grafana/data';
 import { useTabStore } from 'utils/state';
+import { Graphs } from './components/Graphs';
+import { Table } from './components/Table';
 
+// Placeholders for development, if this is in a PR deny it
+const tableData = [
+  { column1: 'Row 1, Column 1', column2: 'Row 1, Column 2' },
+  { column1: 'Row 2, Column 1', column2: 'Row 2, Column 2' },
+  { column1: 'Row 3, Column 1', column2: 'Row 3, Column 2' },
+];
+
+const graphsData = [
+  { value: 10 },
+  { value: 20 },
+  { value: 15 },
+  { value: 25 },
+  { value: 30 },
+];
 
 export const Home = () => {
   const params = useParams<{path: string}>();
@@ -31,6 +47,8 @@ export const Home = () => {
         <Tab label="Process graphs" icon='graph-bar' href={prefixRoute('graphs')} active={getTab === 'graphs'}>
         </Tab>
       </TabsBar>
+      {getTab === 'table' && <Table data={tableData} />}
+      {getTab === 'graphs' && <Graphs data={graphsData} />}
     </PluginPage>
   );
 };
