@@ -4,16 +4,43 @@ import { useParams } from 'react-router-dom';
 import { PluginPage } from '@grafana/runtime';
 import { prefixRoute } from 'utils/utils.routing';
 import { PageLayoutType } from '@grafana/data';
-import { useTabStore } from 'utils/state';
+import { useTabStore, useRowsStore, RowData } from 'utils/state';
 import { Graphs } from './components/Graphs';
 import { Table } from './components/Table';
 
-// Placeholders for development, if this is in a PR deny it
-const tableData = [
-  { column1: 'Row 1, Column 1', column2: 'Row 1, Column 2' },
-  { column1: 'Row 2, Column 1', column2: 'Row 2, Column 2' },
-  { column1: 'Row 3, Column 1', column2: 'Row 3, Column 2' },
-];
+// Function to fetch table data (placeholder for development)
+const fetchTableData: () => RowData[] = () => {
+  return [
+    {
+      process_uuid: 'abc123',
+      status: 'running',
+      start_time: '2023-06-08T10:00:00',
+      additional_field1: 'Value 1',
+    },
+    {
+      process_uuid: 'def456',
+      status: 'finished',
+      start_time: '2023-06-08T11:30:00',
+      end_time: '2023-06-08T12:15:00',
+      additional_field2: 'Value 2',
+    },
+    {
+      process_uuid: 'ghi789',
+      status: 'crashed',
+      start_time: '2023-06-08T13:45:00',
+      end_time: '2023-06-08T14:00:00',
+      additional_field3: 'Value 3',
+    },
+    {
+      process_uuid: 'jkl012',
+      status: 'timed out',
+      start_time: '2023-06-08T15:20:00',
+      end_time: '2023-06-08T16:00:00',
+      additional_field4: 'Value 4',
+    },
+  ];
+};
+
 
 const graphsData = [
   { value: 10 },
@@ -32,10 +59,21 @@ export const Home = () => {
   const setTab = useTabStore((state) => state.set);
   const getTab = useTabStore((state) => state.tab);
 
+  // Access the rows state and setRows function from useRowsStore
+  const rows = useRowsStore((state) => state.rows);
+  const setRows = useRowsStore((state) => state.setRows);
+
   useEffect(() => {
     setTab(tabFromUrl);
   }, [tabFromUrl, setTab]);
 
+  useEffect(() => {
+    if (getTab === 'table') {
+      // Fetch table data and update the rows state
+      const tableData = fetchTableData();
+      setRows(tableData);
+    }
+  }, [getTab, setRows]);
 
   return (
     <PluginPage
@@ -47,7 +85,7 @@ export const Home = () => {
         <Tab label="Process graphs" icon='graph-bar' href={prefixRoute('graphs')} active={getTab === 'graphs'}>
         </Tab>
       </TabsBar>
-      {getTab === 'table' && <Table data={tableData} />}
+      {getTab === 'table' && <Table data={rows} />}
       {getTab === 'graphs' && <Graphs data={graphsData} />}
     </PluginPage>
   );

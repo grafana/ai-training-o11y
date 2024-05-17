@@ -1,29 +1,37 @@
 // Table.tsx
 import React from 'react';
 
+interface RowData {
+  [key: string]: string | undefined;
+}
+
 interface TableProps {
-  // Define the props that the Table component expects
-  data: any[];
+  data: RowData[];
 }
 
 export const Table: React.FC<TableProps> = ({ data }) => {
+  // Get the unique column names from the data
+  const columnNames = Array.from(
+    new Set(data.flatMap(Object.keys))
+  );
+
   return (
     <div>
       <h2>Table</h2>
-      {/* Render the table using the data prop */}
-      {/* Example: */}
       <table>
         <thead>
           <tr>
-            <th>Column 1</th>
-            <th>Column 2</th>
+            {columnNames.map((column, index) => (
+              <th key={index}>{column}</th>
+            ))}
           </tr>
         </thead>
         <tbody>
           {data.map((item, index) => (
             <tr key={index}>
-              <td>{item.column1}</td>
-              <td>{item.column2}</td>
+              {columnNames.map((column, columnIndex) => (
+                <td key={columnIndex}>{item[column]}</td>
+              ))}
             </tr>
           ))}
         </tbody>
