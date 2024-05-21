@@ -32,16 +32,18 @@ export const useRowsStore = create<RowsState>()((set) => ({
 
 interface SelectedRowsState {
   rows: RowData[];
-  indices: Map<string, number>;
+  indices: Map<string, number | undefined>; // Undefined if it was selected previously and is now unselected
   setRows: (rows: RowData[]) => void;
+  addRow: (row: RowData) => void;
+  removeRow: (processUuid: string) => void;
 }
 
 export const useSelectedRowsStore = create<SelectedRowsState>()((set) => ({
   rows: [],
-  indices: new Map<string, number>(),
+  indices: new Map<string, number | undefined>(),
   setRows: (rows) =>
     set(() => {
-      const newIndices = new Map<string, number>();
+      const newIndices = new Map<string, number | undefined>();
       rows.forEach((row, index) => {
         newIndices.set(row.process_uuid, index);
       });
@@ -53,13 +55,19 @@ export const useSelectedRowsStore = create<SelectedRowsState>()((set) => ({
       if (index !== undefined) {
         const newRows = [...state.rows];
         newRows.splice(index, 1);
-        const newIndices = new Map<string, number>();
-        newRows.forEach((row, newIndex) => {
-          newIndices.set(row.process_uuid, newIndex);
-        });
+        // Instead of the current approach, let us just set that position in the map to undefined
+        const newIndices = state.indices;
+        newIndices.set(processUuid, undefined);
         return { rows: newRows, indices: newIndices };
       }
       return state;
+    }),
+  addRow: (row: RowData) =>
+    set((state) => {
+      const newRows = [...state.rows, row];
+      const newIndices = state.indices;
+      state.indices.set(row.process_uuid, newRows.length - 1);
+      return { rows: newRows, indices: newIndices };
     }),
   }
 ));
