@@ -29,3 +29,37 @@ export const useRowsStore = create<RowsState>()((set) => ({
   rows: [],
   setRows: (rows) => set(() => ({ rows })),
 }));
+
+interface SelectedRowsState {
+  rows: RowData[];
+  indices: Map<string, number>;
+  setRows: (rows: RowData[]) => void;
+}
+
+export const useSelectedRowsStore = create<SelectedRowsState>()((set) => ({
+  rows: [],
+  indices: new Map<string, number>(),
+  setRows: (rows) =>
+    set(() => {
+      const newIndices = new Map<string, number>();
+      rows.forEach((row, index) => {
+        newIndices.set(row.process_uuid, index);
+      });
+      return { rows, indices: newIndices };
+    }),
+  removeRow: (processUuid: string) =>
+    set((state) => {
+      const index = state.indices.get(processUuid);
+      if (index !== undefined) {
+        const newRows = [...state.rows];
+        newRows.splice(index, 1);
+        const newIndices = new Map<string, number>();
+        newRows.forEach((row, newIndex) => {
+          newIndices.set(row.process_uuid, newIndex);
+        });
+        return { rows: newRows, indices: newIndices };
+      }
+      return state;
+    }),
+  }
+));
