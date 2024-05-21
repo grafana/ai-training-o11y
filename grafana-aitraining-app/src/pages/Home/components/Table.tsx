@@ -1,6 +1,7 @@
 // Table.tsx
 import React from 'react';
 
+import { Loki } from 'components/Datasources/Loki';
 interface RowData {
   [key: string]: string | undefined;
 }
@@ -18,6 +19,9 @@ export const Table: React.FC<TableProps> = ({ data }) => {
   return (
     <div>
       <h2>Table</h2>
+      <div style={{ paddingTop: '10px', paddingBottom: '40px' }}>
+      <Loki onQueryResult={(q) => { console.log('onQueryResult', q)}} />
+      </div>
       <table>
         <thead>
           <tr>
