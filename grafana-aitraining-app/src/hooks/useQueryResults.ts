@@ -9,10 +9,8 @@ import { useCancelQuery, useQueryRunner } from './useQueryRunner';
 /// returning current panel along with isRefresh boolean, a refresh function, and a cancel function
 export function useQueryResult(
   maxDataPoints: number,
-  timeRange: TimeRange,
-  timeZone: string,
-  datasource: any,
-): [PanelData | undefined, (query: DataQuery) => void, () => void, boolean] {
+  datasource: any
+): [PanelData | undefined, (query: DataQuery, timeRange: TimeRange, timeZone: string) => void, () => void, boolean] {
   const runner = useQueryRunner();
   const cancelQuery = useCancelQuery();
   const [isRunning, setIsRunning] = useState<boolean>(false);
@@ -34,9 +32,9 @@ export function useQueryResult(
 
   // todo: need a loading status
   // move time range/time zone here
-  const onRunQuery = async (query: DataQuery) => {
+  const onRunQuery = async (query: DataQuery, timeRange: TimeRange, timeZone: string) => {
     setIsRunning(true);
-    await setTimeout(()=> {}, 3000);
+    await setTimeout(() => {}, 3000);
     const queries: DataQuery[] = [query];
     runner.run({
       timeRange,
@@ -50,4 +48,3 @@ export function useQueryResult(
 
   return [value, onRunQuery, cancelQuery, isRunning];
 }
-

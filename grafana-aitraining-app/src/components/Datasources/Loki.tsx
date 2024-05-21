@@ -11,7 +11,8 @@ interface LokiProps {
   datasource: any;
   data?: any;
   timeRange: TimeRange;
-  onRunQuery: (query: DataQuery) => void;
+  timeZone: string;
+  onRunQuery: (query: DataQuery, timeRange: TimeRange, timeZone: string) => void;
   onQueryResult: (data: any) => void;
 }
 
@@ -36,8 +37,6 @@ const LokiWrapper: React.FC<LokiWrapperProps> = ({ onQueryResult }) => {
   // data, runQuery, cancelQuery
   const [data,onRunQuery,,isRunning] = useQueryResult(
     100,
-    tmpTimeRange,
-    'EST',
     lokiDS
   );
 
@@ -55,6 +54,7 @@ const LokiWrapper: React.FC<LokiWrapperProps> = ({ onQueryResult }) => {
         datasource={lokiDS}
         data={data}
         timeRange={tmpTimeRange}
+        timeZone="EST"
         onRunQuery={onRunQuery}
         onQueryResult={onQueryResult}
       />
@@ -62,7 +62,7 @@ const LokiWrapper: React.FC<LokiWrapperProps> = ({ onQueryResult }) => {
   );
 };
 
-const Loki: React.FC<LokiProps> = ({ datasource, data, timeRange, onRunQuery, onQueryResult }) => {
+const Loki: React.FC<LokiProps> = ({ datasource, data, timeRange, timeZone, onRunQuery, onQueryResult }) => {
   const [query, setQuery] = useState<DataQuery>({ refId: 'A' });
 
   const ReactQueryEditor = datasource.value?.components?.QueryEditor;
@@ -77,7 +77,7 @@ const Loki: React.FC<LokiProps> = ({ datasource, data, timeRange, onRunQuery, on
       range={timeRange}
       onRunQuery={() => {
         console.log('running query', query);
-        onRunQuery(query);
+        onRunQuery(query, timeRange, timeZone);
       }}
       query={query}
       datasource={datasource.value!}
