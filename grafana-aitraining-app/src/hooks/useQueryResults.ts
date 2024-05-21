@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { LoadingState, PanelData, TimeRange } from '@grafana/data';
+import { PanelData, TimeRange } from '@grafana/data';
 import { DataQuery } from '@grafana/schema';
 
 import { useCancelQuery, useQueryRunner } from './useQueryRunner';
@@ -12,14 +12,17 @@ export function useQueryResult(
   timeRange: TimeRange,
   timeZone: string,
   datasource: any,
-): [PanelData | undefined, (query: DataQuery) => void, () => void] {
+): [PanelData | undefined, (query: DataQuery) => void, () => void, boolean] {
   const runner = useQueryRunner();
   const cancelQuery = useCancelQuery();
+  const [isRunning, setIsRunning] = useState<boolean>(false);
 
   const [value, update] = useState<PanelData | undefined>(undefined);
   const handleUpdate = useCallback(
     (v: PanelData | undefined) => {
+      setIsRunning(false);
       update(v);
+      // TODO: handle results
     },
     [update]
   );
@@ -29,7 +32,11 @@ export function useQueryResult(
     return () => s.unsubscribe();
   }, [runner, handleUpdate]);
 
+  // todo: need a loading status
+  // move time range/time zone here
   const onRunQuery = async (query: DataQuery) => {
+    setIsRunning(true);
+    await setTimeout(()=> {}, 3000);
     const queries: DataQuery[] = [query];
     runner.run({
       timeRange,
@@ -41,5 +48,6 @@ export function useQueryResult(
     });
   };
 
-  return [value, onRunQuery, cancelQuery];
+  return [value, onRunQuery, cancelQuery, isRunning];
 }
+

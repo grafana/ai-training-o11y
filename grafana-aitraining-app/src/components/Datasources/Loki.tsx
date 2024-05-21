@@ -34,12 +34,15 @@ const LokiWrapper: React.FC<LokiWrapperProps> = ({ onQueryResult }) => {
   };
 
   // data, runQuery, cancelQuery
-  const [data,onRunQuery] = useQueryResult(
+  const [data,onRunQuery,,isRunning] = useQueryResult(
     100,
     tmpTimeRange,
     'EST',
     lokiDS
   );
+
+  // TODO: Remove this - Example of using isRunning to determine when the results of the query are ready
+  console.log('isRunning', isRunning);
 
   if ((lokiDS?.value ?? '') === '') {
     console.log('Error loading datasource editor: NULL DATASOURCE');
