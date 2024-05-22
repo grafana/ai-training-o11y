@@ -1,6 +1,8 @@
 import React from 'react';
 import { RowData, useSelectedRowsStore } from 'utils/state';
 
+import { Loki } from 'components/Datasources/Loki';
+
 interface TableProps {
   data: RowData[];
 }
@@ -16,6 +18,9 @@ export const Table: React.FC<TableProps> = ({ data }) => {
   return (
     <div>
       <h2>Table</h2>
+      <div style={{ paddingTop: '10px', paddingBottom: '40px' }}>
+      <Loki onQueryResult={(q) => { console.log('onQueryResult', q)}} />
+      </div>
       <table style={styles.table}>
         <thead>
           <tr>
