@@ -5,6 +5,7 @@ import { PluginPropsContext } from '../../utils/utils.plugin';
 import { Routes } from '../Routes';
 import { TrainingApiDatasource } from '../../datasource/Datasource';
 import { QueryRunnerProvider } from 'hooks/useQueryRunner';
+import { makeProcessGetter } from 'utils/api';
 
 export class App extends React.PureComponent<AppRootProps> {
   componentDidMount() {
@@ -23,10 +24,12 @@ export class App extends React.PureComponent<AppRootProps> {
     }
   }
 
+  getProcesses = makeProcessGetter(this.props.meta.id);
+
   render() {
     return (
       <QueryRunnerProvider>
-        <PluginPropsContext.Provider value={this.props}>
+        <PluginPropsContext.Provider value={{...this.props, getProcesses: this.getProcesses}}>
           <Routes />
         </PluginPropsContext.Provider>
       </QueryRunnerProvider>
