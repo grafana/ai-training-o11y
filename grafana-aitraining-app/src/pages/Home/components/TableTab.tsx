@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { RowData } from 'utils/state';
 
 // import { Loki } from 'components/Datasources/Loki';
+
 
 interface TableTabProps {
   rows: RowData[];
@@ -18,11 +19,6 @@ export const TableTab: React.FC<TableTabProps> = ({
   addSelectedRow,
   removeSelectedRow,
 }: TableTabProps) => {
-
-
-  useEffect(() => {
-    console.log(isSelected);
-  }, [isSelected]);
 
   // Get the unique column names from the data
   const columnNames = Array.from(new Set(rows.flatMap(Object.keys)));
