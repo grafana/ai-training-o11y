@@ -1,21 +1,15 @@
 import React from 'react';
+import { RowData } from 'utils/state';
 
 interface GraphsProps {
-  // Define the props that the Graphs component expects
-  data: any[];
+  rows: RowData[];
 }
 
-export const Graphs: React.FC<GraphsProps> = ({ data }) => {
+export const Graphs: React.FC<GraphsProps> = ({ rows }) => {
   return (
     <div>
-      <h2>Graphs</h2>
-      {/* Render the graphs using the data prop */}
-      {/* Example: */}
-      <ul>
-        {data.map((item, index) => (
-          <li key={index}>{item.value}</li>
-        ))}
-      </ul>
+      <h2>Graphs Props</h2>
+      <pre>{JSON.stringify(rows, null, 2)}</pre>
     </div>
   );
 };

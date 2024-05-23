@@ -1,26 +1,35 @@
-import React from 'react';
-import { RowData, useSelectedRowsStore } from 'utils/state';
+import React, { useEffect } from 'react';
+import { RowData } from 'utils/state';
 
-import { Loki } from 'components/Datasources/Loki';
+// import { Loki } from 'components/Datasources/Loki';
 
-interface TableProps {
-  data: RowData[];
+interface TableTabProps {
+  rows: RowData[];
+  isSelected: boolean[];
+  setIsSelected: (index: number, value: boolean) => void;
+  addSelectedRow: (row: RowData) => void;
+  removeSelectedRow: (processUuid: string) => void;
 }
 
-export const Table: React.FC<TableProps> = ({ data }) => {
+export const TableTab: React.FC<TableTabProps> = ({
+  rows,
+  isSelected,
+  setIsSelected,
+  addSelectedRow,
+  removeSelectedRow,
+}: TableTabProps) => {
+
+
+  useEffect(() => {
+    console.log(isSelected);
+  }, [isSelected]);
+
   // Get the unique column names from the data
-  const columnNames = Array.from(new Set(data.flatMap(Object.keys)));
-
-  const { rows, addRow, removeRow } = useSelectedRowsStore();
-
-  console.log(rows);
+  const columnNames = Array.from(new Set(rows.flatMap(Object.keys)));
 
   return (
     <div>
       <h2>Table</h2>
-      <div style={{ paddingTop: '10px', paddingBottom: '40px' }}>
-      <Loki onQueryResult={(q) => { console.log('onQueryResult', q)}} />
-      </div>
       <table style={styles.table}>
         <thead>
           <tr>
@@ -33,16 +42,19 @@ export const Table: React.FC<TableProps> = ({ data }) => {
           </tr>
         </thead>
         <tbody>
-          {data.map((item, index) => (
+          {rows.map((item, index) => (
             <tr key={index} style={styles.tr}>
               <td style={styles.td}>
                 <input
                   type="checkbox"
+                  checked={isSelected[index]}
                   onChange={(e) => {
                     if (e.target.checked) {
-                      addRow(item);
+                      addSelectedRow(item);
+                      setIsSelected(index, true);
                     } else {
-                      removeRow(item.process_uuid);
+                      removeSelectedRow(item.process_uuid);
+                      setIsSelected(index, false);
                     }
                   }}
                 />
@@ -80,4 +92,4 @@ const styles = {
   },
 };
 
-export default Table;
+export default TableTab;

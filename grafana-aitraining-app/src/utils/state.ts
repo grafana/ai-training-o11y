@@ -1,14 +1,4 @@
-import { create } from 'zustand'
-
-interface TabState {
-  tab: 'table' | 'graphs'
-  set: (tab: string) => void
-}
-
-export const useTabStore = create<TabState>()((set) => ({
-  tab: 'table',
-  set: (to) => set((state) => ({ tab: to as 'table' | 'graphs'})),
-}))
+import { create } from 'zustand';
 
 export type ProcessStatus = 'running' | 'finished' | 'crashed' | 'timed out';
 
@@ -20,54 +10,73 @@ export interface RowData {
   [key: string]: string | undefined;
 }
 
-interface RowsState {
-  rows: RowData[];
-  setRows: (rows: RowData[]) => void;
+interface TrainingAppState {
+  // Tab state
+  tab: 'table' | 'graphs';
+  setTab: (tab: 'table' | 'graphs') => void;
+
+  // Rendered rows state
+  renderedRows: RowData[];
+  isSelected: boolean[];
+  setRenderedRows: (rows: RowData[]) => void;
+  setIsSelected: (index: number, value: boolean) => void;
+
+  // Selected rows state
+  selectedRows: RowData[];
+  indices: Map<string, number | undefined>;
+  setSelectedRows: (rows: RowData[]) => void;
+  addSelectedRow: (row: RowData) => void;
+  removeSelectedRow: (processUuid: string) => void;
 }
 
-export const useRowsStore = create<RowsState>()((set) => ({
-  rows: [],
-  setRows: (rows) => set(() => ({ rows })),
-}));
+export const useTrainingAppStore = create<TrainingAppState>()((set) => ({
+  // Tab state
+  tab: 'table',
+  setTab: (tab) => set(() => ({ tab })),
 
-interface SelectedRowsState {
-  rows: RowData[];
-  indices: Map<string, number | undefined>; // Undefined if it was selected previously and is now unselected
-  setRows: (rows: RowData[]) => void;
-  addRow: (row: RowData) => void;
-  removeRow: (processUuid: string) => void;
-}
+  // Rendered rows state
+  renderedRows: [],
+  isSelected: [],
+  setRenderedRows: (rows) =>
+    set(() => {
+      const isSelected = new Array(rows.length).fill(false);
+      return { renderedRows: rows, isSelected };
+    }),
+  setIsSelected: (index, value) =>
+    set((state) => {
+      const newIsSelected = [...state.isSelected];
+      newIsSelected[index] = value;
+      return { isSelected: newIsSelected };
+    }),
 
-export const useSelectedRowsStore = create<SelectedRowsState>()((set) => ({
-  rows: [],
+  // Selected rows state
+  selectedRows: [],
   indices: new Map<string, number | undefined>(),
-  setRows: (rows) =>
+  setSelectedRows: (rows) =>
     set(() => {
       const newIndices = new Map<string, number | undefined>();
       rows.forEach((row, index) => {
         newIndices.set(row.process_uuid, index);
       });
-      return { rows, indices: newIndices };
+      return { selectedRows: rows, indices: newIndices };
     }),
-  removeRow: (processUuid: string) =>
+  removeSelectedRow: (processUuid) =>
     set((state) => {
       const index = state.indices.get(processUuid);
       if (index !== undefined) {
-        const newRows = [...state.rows];
+        const newRows = [...state.selectedRows];
         newRows.splice(index, 1);
-        // Instead of the current approach, let us just set that position in the map to undefined
         const newIndices = state.indices;
         newIndices.set(processUuid, undefined);
-        return { rows: newRows, indices: newIndices };
+        return { selectedRows: newRows, indices: newIndices };
       }
       return state;
     }),
-  addRow: (row: RowData) =>
+  addSelectedRow: (row) =>
     set((state) => {
-      const newRows = [...state.rows, row];
+      const newRows = [...state.selectedRows, row];
       const newIndices = state.indices;
       state.indices.set(row.process_uuid, newRows.length - 1);
-      return { rows: newRows, indices: newIndices };
+      return { selectedRows: newRows, indices: newIndices };
     }),
-  }
-));
+}));
