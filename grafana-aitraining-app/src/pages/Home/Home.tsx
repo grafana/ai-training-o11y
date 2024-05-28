@@ -5,7 +5,7 @@ import { PluginPage } from '@grafana/runtime';
 import { prefixRoute } from 'utils/utils.routing';
 import { PageLayoutType } from '@grafana/data';
 import { useTrainingAppStore } from 'utils/state';
-import { Graphs } from './components/Graphs';
+import { GraphsTab } from './components/GraphsTab';
 import { TableTab } from './components/TableTab';
 import { useGetProcesses } from 'utils/utils.plugin';
 
@@ -69,7 +69,7 @@ export const Home = () => {
           removeSelectedRow={removeSelectedRow}
         />
       }
-      {tab === 'graphs' && <Graphs rows={selectedRows} />}
+      {tab === 'graphs' && <GraphsTab rows={selectedRows} />}
     </PluginPage>
   );
 };

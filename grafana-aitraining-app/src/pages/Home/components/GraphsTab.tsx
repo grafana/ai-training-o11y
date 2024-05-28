@@ -5,7 +5,7 @@ interface GraphsProps {
   rows: RowData[];
 }
 
-export const Graphs: React.FC<GraphsProps> = ({ rows }) => {
+export const GraphsTab: React.FC<GraphsProps> = ({ rows }) => {
   return (
     <div>
       <h2>Graphs Props</h2>
