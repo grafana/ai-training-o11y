@@ -29,7 +29,7 @@ COPY --link ai-training-api ./
 
 FROM prep AS development
 
-RUN --mount=type=cache,id=go-cache-ai-training-api,target=/opt/go go install github.com/cosmtrek/air@latest
+RUN --mount=type=cache,id=go-cache-ai-training-api,target=/opt/go go install github.com/air-verse/air@latest
 
 FROM prep as build
 
