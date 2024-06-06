@@ -4,7 +4,6 @@ import { sceneUtils } from '@grafana/scenes';
 import { PluginPropsContext } from '../../utils/utils.plugin';
 import { Routes } from '../Routes';
 import { TrainingApiDatasource } from '../../datasource/Datasource';
-import { QueryRunnerProvider } from 'hooks/useQueryRunner';
 import { makeProcessGetter } from 'utils/api';
 
 export class App extends React.PureComponent<AppRootProps> {
@@ -28,11 +27,9 @@ export class App extends React.PureComponent<AppRootProps> {
 
   render() {
     return (
-      <QueryRunnerProvider>
-        <PluginPropsContext.Provider value={{...this.props, getProcesses: this.getProcesses}}>
-          <Routes />
-        </PluginPropsContext.Provider>
-      </QueryRunnerProvider>
+      <PluginPropsContext.Provider value={{ ...this.props, getProcesses: this.getProcesses }}>
+        <Routes />
+      </PluginPropsContext.Provider>
     );
   }
 }

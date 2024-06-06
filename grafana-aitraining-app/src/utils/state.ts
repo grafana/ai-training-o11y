@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 
-export type ProcessStatus = 'running' | 'finished' | 'crashed' | 'timed out';
+import { PanelData } from '@grafana/data';
+
+export type ProcessStatus = 'empty' | 'running' | 'finished' | 'crashed' | 'timed out';
 
 export interface RowData {
   process_uuid: string;
@@ -8,6 +10,11 @@ export interface RowData {
   start_time: string;
   end_time?: string;
   [key: string]: string | undefined;
+}
+
+export interface QueryResultData {
+  processData: RowData;
+  lokiData: PanelData | undefined; 
 }
 
 interface TrainingAppState {
@@ -27,6 +34,13 @@ interface TrainingAppState {
   setSelectedRows: (rows: RowData[]) => void;
   addSelectedRow: (row: RowData) => void;
   removeSelectedRow: (processUuid: string) => void;
+
+  // query result state
+  queryStatus: ProcessStatus;
+  queryData: Record<string, QueryResultData>;
+  resetResults: () => void;
+  appendResult: (processData: RowData, result: PanelData | undefined) => void;
+  setQueryStatus: (status: ProcessStatus) => void;
 }
 
 export const useTrainingAppStore = create<TrainingAppState>()((set) => ({
@@ -79,4 +93,14 @@ export const useTrainingAppStore = create<TrainingAppState>()((set) => ({
       state.indices.set(row.process_uuid, newRows.length - 1);
       return { selectedRows: newRows, indices: newIndices };
     }),
+
+    // query result state
+  queryData: {},
+  queryStatus: 'empty',
+  resetResults: () => set(() => ({ queryStatus: 'empty', queryData: {} })),
+  appendResult: (processData, result) => set((state) => ({ 
+    queryData: { ...state.queryData, [processData.process_uuid]: { processData, lokiData: result } }
+  })),
+  setQueryStatus: (status: ProcessStatus) => set(() => ({ queryStatus: status })),
+
 }));
