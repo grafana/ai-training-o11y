@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-
 import { PanelData } from '@grafana/data';
 
 export type ProcessStatus = 'empty' | 'running' | 'finished' | 'crashed' | 'timed out';
@@ -14,7 +13,7 @@ export interface RowData {
 
 export interface QueryResultData {
   processData: RowData;
-  lokiData: PanelData | undefined; 
+  lokiData: PanelData | undefined;
 }
 
 interface TrainingAppState {
@@ -30,12 +29,12 @@ interface TrainingAppState {
 
   // Selected rows state
   selectedRows: RowData[];
-  indices: Map<string, number | undefined>;
+  selectedRowsMap: Record<string, number>;
   setSelectedRows: (rows: RowData[]) => void;
   addSelectedRow: (row: RowData) => void;
   removeSelectedRow: (processUuid: string) => void;
 
-  // query result state
+  // Query result state
   queryStatus: ProcessStatus;
   queryData: Record<string, QueryResultData>;
   resetResults: () => void;
@@ -65,32 +64,46 @@ export const useTrainingAppStore = create<TrainingAppState>()((set) => ({
 
   // Selected rows state
   selectedRows: [],
-  indices: new Map<string, number | undefined>(),
+  selectedRowsMap: {},
   setSelectedRows: (rows) =>
     set(() => {
-      return { selectedRows: rows };
+      const selectedRowsMap: Record<string, number> = {};
+      rows.forEach((row, index) => {
+        selectedRowsMap[row.process_uuid] = index;
+      });
+      return { selectedRows: rows, selectedRowsMap };
     }),
   removeSelectedRow: (processUuid) =>
     set((state) => {
-      const newRows = state.selectedRows.filter((row) => row.process_uuid !== processUuid);
-      return { selectedRows: newRows };
+      const index = state.selectedRowsMap[processUuid];
+      if (index !== undefined) {
+        const newSelectedRows = [...state.selectedRows];
+        newSelectedRows.splice(index, 1);
+        const newSelectedRowsMap: Record<string, number> = {};
+        newSelectedRows.forEach((row, newIndex) => {
+          newSelectedRowsMap[row.process_uuid] = newIndex;
+        });
+        return { selectedRows: newSelectedRows, selectedRowsMap: newSelectedRowsMap };
+      }
+      return state;
     }),
   addSelectedRow: (row) =>
     set((state) => {
-      if (!state.selectedRows.some((selectedRow) => selectedRow.process_uuid === row.process_uuid)) {
-        const newRows = [...state.selectedRows, row];
-        return { selectedRows: newRows };
+      if (!state.selectedRowsMap.hasOwnProperty(row.process_uuid)) {
+        const newSelectedRows = [...state.selectedRows, row];
+        const newSelectedRowsMap = { ...state.selectedRowsMap, [row.process_uuid]: newSelectedRows.length - 1 };
+        return { selectedRows: newSelectedRows, selectedRowsMap: newSelectedRowsMap };
       }
       return state;
     }),
 
-    // query result state
+  // Query result state
   queryData: {},
   queryStatus: 'empty',
   resetResults: () => set(() => ({ queryStatus: 'empty', queryData: {} })),
-  appendResult: (processData, result) => set((state) => ({ 
-    queryData: { ...state.queryData, [processData.process_uuid]: { processData, lokiData: result } }
-  })),
+  appendResult: (processData, result) =>
+    set((state) => ({
+      queryData: { ...state.queryData, [processData.process_uuid]: { processData, lokiData: result } },
+    })),
   setQueryStatus: (status: ProcessStatus) => set(() => ({ queryStatus: status })),
-
 }));
