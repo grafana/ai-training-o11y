@@ -68,30 +68,20 @@ export const useTrainingAppStore = create<TrainingAppState>()((set) => ({
   indices: new Map<string, number | undefined>(),
   setSelectedRows: (rows) =>
     set(() => {
-      const newIndices = new Map<string, number | undefined>();
-      rows.forEach((row, index) => {
-        newIndices.set(row.process_uuid, index);
-      });
-      return { selectedRows: rows, indices: newIndices };
+      return { selectedRows: rows };
     }),
   removeSelectedRow: (processUuid) =>
     set((state) => {
-      const index = state.indices.get(processUuid);
-      if (index !== undefined) {
-        const newRows = [...state.selectedRows];
-        newRows.splice(index, 1);
-        const newIndices = state.indices;
-        newIndices.set(processUuid, undefined);
-        return { selectedRows: newRows, indices: newIndices };
-      }
-      return state;
+      const newRows = state.selectedRows.filter((row) => row.process_uuid !== processUuid);
+      return { selectedRows: newRows };
     }),
   addSelectedRow: (row) =>
     set((state) => {
-      const newRows = [...state.selectedRows, row];
-      const newIndices = state.indices;
-      state.indices.set(row.process_uuid, newRows.length - 1);
-      return { selectedRows: newRows, indices: newIndices };
+      if (!state.selectedRows.some((selectedRow) => selectedRow.process_uuid === row.process_uuid)) {
+        const newRows = [...state.selectedRows, row];
+        return { selectedRows: newRows };
+      }
+      return state;
     }),
 
     // query result state
