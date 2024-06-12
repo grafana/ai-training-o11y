@@ -13,6 +13,7 @@ export const GraphsTab: React.FC<GraphsProps> = ({ rows }) => {
   const { isReady, runQueries } = useProcessQueries();
 
   useEffect(() => {
+    console.log('useEffect firing', {queryStatus, queryData});
     if (queryStatus === 'success' && Object.keys(queryData).length > 0) {
       const organized = reshapeModelMetrics(queryData);
       setOrganizedData(organized);

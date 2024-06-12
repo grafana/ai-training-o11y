@@ -22,7 +22,7 @@ const useProcessQueries = () => {
     const doneCount = selectedRows.length;
     let currentCount = 0;
 
-    setQueryStatus('running');
+    setQueryStatus('loading');
 
     selectedRows.map((processData) => {
       // build the query here, including setting a time range and other details
@@ -53,7 +53,7 @@ const useProcessQueries = () => {
           currentCount++;
           // if this is the last process completed, mark the results as finished
           if (currentCount === doneCount) {
-            setQueryStatus('finished');
+            setQueryStatus('success');
           }
           appendResult(processData, data);
         },
