@@ -2,6 +2,14 @@ import { create } from 'zustand';
 import { PanelData } from '@grafana/data';
 
 export type ProcessStatus = 'empty' | 'running' | 'finished' | 'crashed' | 'timed out';
+type QueryStatus =
+  | 'idle'
+  | 'loading'
+  | 'success'
+  | 'error'
+  | 'unauthorized'
+  | 'notFound'
+  | 'serverError';
 
 export interface RowData {
   process_uuid: string;
@@ -35,11 +43,14 @@ interface TrainingAppState {
   removeSelectedRow: (processUuid: string) => void;
 
   // Query result state
-  queryStatus: ProcessStatus;
+  queryStatus: QueryStatus;
   queryData: Record<string, QueryResultData>;
   resetResults: () => void;
   appendResult: (processData: RowData, result: PanelData | undefined) => void;
-  setQueryStatus: (status: ProcessStatus) => void;
+  setQueryStatus: (status: QueryStatus) => void;
+
+  organizedData: any; // Add the organizedData property
+  setOrganizedData: (data: any) => void; // Add the setOrganizedData function
 }
 
 export const useTrainingAppStore = create<TrainingAppState>()((set) => ({
@@ -99,11 +110,13 @@ export const useTrainingAppStore = create<TrainingAppState>()((set) => ({
 
   // Query result state
   queryData: {},
-  queryStatus: 'empty',
-  resetResults: () => set(() => ({ queryStatus: 'empty', queryData: {} })),
+  queryStatus: 'idle',
+  resetResults: () => set(() => ({ queryStatus: 'idle', queryData: {} })),
   appendResult: (processData, result) =>
     set((state) => ({
       queryData: { ...state.queryData, [processData.process_uuid]: { processData, lokiData: result } },
     })),
-  setQueryStatus: (status: ProcessStatus) => set(() => ({ queryStatus: status })),
+  setQueryStatus: (status: QueryStatus) => set(() => ({ queryStatus: status })),
+  organizedData: {},
+  setOrganizedData: (data) => set((state) => ({ ...state, organizedData: data })), // Define the setOrganizedData function
 }));
