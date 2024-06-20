@@ -28,9 +28,16 @@ export const Home = () => {
   // What tab we are on
   let tabFromUrl = params['path']?.split('/')[0];
   tabFromUrl = tabFromUrl === 'table' || tabFromUrl === 'graphs' ? tabFromUrl : 'table';
+
+
   useEffect(() => {
-    setTab(tabFromUrl as "table" | "graphs");
-  }, [tabFromUrl, setTab]);
+    // If selectedRows state is not undefined or empty, set the tab to the tabFromUrl
+    if (selectedRows && selectedRows.length > 0) {
+      setTab(tabFromUrl as "table" | "graphs");
+    } else {
+      setTab("table");
+    }
+  }, [tabFromUrl, setTab, selectedRows]);
 
   const getProcesses = useGetProcesses();
 

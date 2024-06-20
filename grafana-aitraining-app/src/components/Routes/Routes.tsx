@@ -6,8 +6,8 @@ import { prefixRoute } from '../../utils/utils.routing';
 export const Routes = () => {
   return (
     <Switch>
-      <Route path={prefixRoute(':path*')} component={Home} />
-      <Redirect to={prefixRoute('')} />
+      <Route path={prefixRoute(':path(table|graphs)')} component={Home} />
+      <Redirect to={prefixRoute('table')} />
     </Switch>
   );
 };

@@ -27,6 +27,13 @@ export const GraphsTab: React.FC<GraphsProps> = ({ rows }) => {
     }
   }, [organizedData]);
 
+  // Log queryData if it is not undefined
+  useEffect(() => {
+    if (queryData) {
+      console.log('Query Data:', queryData);
+    }
+  }, [queryData]);
+
   if (!isReady) {
     return <div>Loading...</div>;
   }
@@ -44,9 +51,16 @@ export const GraphsTab: React.FC<GraphsProps> = ({ rows }) => {
     runQueries();
   }
 
+  if (!queryData) {
+    return <div>No data</div>;
+  }
+
   return (
     <div>
       <button onClick={resetResults}>Reset Results</button>
+      <div style={{ marginBottom: '20px' }}>
+
+      </div>
 
       <div style={{ marginBottom: '20px' }}>
         {Object.keys(queryData).map((key) => (
