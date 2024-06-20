@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Tab, TabsBar } from '@grafana/ui';
-import { useParams } from 'react-router-dom';
+import { useParams, useHistory } from 'react-router-dom';
 import { PluginPage } from '@grafana/runtime';
 import { prefixRoute } from 'utils/utils.routing';
 import { PageLayoutType } from '@grafana/data';
@@ -10,7 +10,6 @@ import { TableTab } from './components/TableTab';
 import { useGetProcesses } from 'utils/utils.plugin';
 
 export const Home = () => {
-  // state management
   const trainingAppStore = useTrainingAppStore();
   const {
     tab,
@@ -25,24 +24,20 @@ export const Home = () => {
   } = trainingAppStore;
 
   const params = useParams<{path: string}>();
-  // What tab we are on
-  let tabFromUrl = params['path']?.split('/')[0];
-  tabFromUrl = tabFromUrl === 'table' || tabFromUrl === 'graphs' ? tabFromUrl : 'table';
-
+  const history = useHistory();
+  
+  let tabFromUrl = params['path'] as 'table' | 'graphs';
 
   useEffect(() => {
-    // If selectedRows state is not undefined or empty, set the tab to the tabFromUrl
-    if (selectedRows && selectedRows.length > 0) {
-      setTab(tabFromUrl as "table" | "graphs");
+    if (tabFromUrl === 'graphs' && (!selectedRows || selectedRows.length === 0)) {
+      history.replace(prefixRoute('table'));
     } else {
-      setTab("table");
+      setTab(tabFromUrl);
     }
-  }, [tabFromUrl, setTab, selectedRows]);
+  }, [tabFromUrl, selectedRows, history, setTab]);
 
   const getProcesses = useGetProcesses();
 
-  // This will fetch the processes from the backend
-  // It will ultimately need to be more elaborate for paging, filtering, grouping, etc.
   useEffect(() => {
     const fetchProcesses = async () => {
       try {
@@ -57,15 +52,30 @@ export const Home = () => {
     fetchProcesses();
   }, [getProcesses, setRenderedRows]);
 
+  const handleTabChange = (newTab: 'table' | 'graphs') => (event: React.MouseEvent<HTMLElement>) => {
+    event.preventDefault();
+    if (newTab === 'graphs' && (!selectedRows || selectedRows.length === 0)) {
+      // Do nothing or show a message that rows need to be selected first
+      return;
+    }
+    history.push(prefixRoute(newTab));
+  };
+
   return (
-    <PluginPage
-      layout={PageLayoutType.Canvas}
-    >
+    <PluginPage layout={PageLayoutType.Canvas}>
       <TabsBar>
-        <Tab label="Process table" icon='table' href={prefixRoute('table')} active={tab === 'table'}>
-        </Tab>
-        <Tab label="Process graphs" icon='graph-bar' href={prefixRoute('graphs')} active={tab === 'graphs'}>
-        </Tab>
+        <Tab 
+          label="Process table" 
+          icon="table"
+          active={tab === 'table'}
+          onChangeTab={handleTabChange('table')}
+        />
+        <Tab 
+          label="Process graphs" 
+          icon="graph-bar"
+          active={tab === 'graphs'}
+          onChangeTab={handleTabChange('graphs')}
+        />
       </TabsBar>
       {tab === 'table' &&
         <TableTab
