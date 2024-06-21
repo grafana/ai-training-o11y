@@ -12,7 +12,7 @@ interface RunQueryProps {
   onResult: (data: any) => void;
 }
 
-export const runQuery = async ({
+export const runQuery = ({
   datasource,
   maxDataPoints,
   minInterval,
@@ -20,25 +20,49 @@ export const runQuery = async ({
   timeRange,
   timeZone,
   onResult
-}: RunQueryProps) => {
-  let subRef: any = null;
+}: RunQueryProps): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    let subRef: any = null;
+    let lastStateTime = performance.now();
 
-  const unsubscribe = () => {
-    if (subRef !== null) {
-      console.log('unsubscribing');
-      subRef.unsubscribe();
+    const unsubscribe = () => {
+      if (subRef !== null) {
+        console.log('unsubscribing');
+        subRef.unsubscribe();
+      }
     }
-  }
 
-  const run = async () => {
     const runner = createQueryRunner();
 
-    subRef = runner.get().subscribe((data) => {
-      console.log('listening', data?.state);
-      if (data?.state === 'Done') {
-        console.log('done!!');
-        onResult(data);
+    const startTime = performance.now();
+    subRef = runner.get().subscribe({
+      next: (data) => {
+        const currentTime = performance.now();
+        const timeSinceStart = currentTime - startTime;
+        const timeSinceLastState = currentTime - lastStateTime;
+        
+        console.log('listening', data?.state, 
+          `Time since start: ${timeSinceStart.toFixed(2)}ms`, 
+          `Time since last state: ${timeSinceLastState.toFixed(2)}ms`
+        );
+        console.log(data);
+        
+        if (data?.state === 'Done') {
+          console.log('done!!', 
+            `Total time: ${timeSinceStart.toFixed(2)}ms`, 
+            `Time since last state: ${timeSinceLastState.toFixed(2)}ms`
+          );
+          onResult(data);
+          unsubscribe();
+          resolve();
+        }
+        
+        lastStateTime = currentTime;
+      },
+      error: (error) => {
+        console.error('Query error:', error);
         unsubscribe();
+        reject(error);
       }
     });
 
@@ -50,7 +74,5 @@ export const runQuery = async ({
       minInterval,
       timezone: timeZone,
     });
-  }
-
-  run();
+  });
 }
