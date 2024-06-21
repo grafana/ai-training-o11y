@@ -19,13 +19,17 @@ const useProcessQueries = () => {
   
     const queryPromises = selectedRows.map(async (processData, index) => {
       console.log(`Preparing query ${index} at ${new Date().toISOString()}`);
-      const startDate = new Date();
-      startDate.setHours(startDate.getHours() - 7200);
-      const endDate = dateTime(new Date());
+      console.log(`Process data:`, processData);
+      const startDate = dateTime(processData.start_time);
+      const endDate = dateTime(processData.end_time);
+  
       const tmpTimeRange: TimeRange = {
-        from: dateTime(startDate),
+        from: startDate,
         to: endDate,
-        raw: { from: startDate.toLocaleString(), to: endDate.toLocaleString() },
+        raw: {
+          from: startDate.toISOString(),
+          to: endDate.toISOString()
+        },
       };
   
       const query = {
