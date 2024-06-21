@@ -34,24 +34,11 @@ export const runQuery = ({
 
     const runner = createQueryRunner();
 
-    const startTime = performance.now();
     subRef = runner.get().subscribe({
       next: (data) => {
         const currentTime = performance.now();
-        const timeSinceStart = currentTime - startTime;
-        const timeSinceLastState = currentTime - lastStateTime;
-        
-        console.log('listening', data?.state, 
-          `Time since start: ${timeSinceStart.toFixed(2)}ms`, 
-          `Time since last state: ${timeSinceLastState.toFixed(2)}ms`
-        );
-        console.log(data);
         
         if (data?.state === 'Done') {
-          console.log('done!!', 
-            `Total time: ${timeSinceStart.toFixed(2)}ms`, 
-            `Time since last state: ${timeSinceLastState.toFixed(2)}ms`
-          );
           onResult(data);
           unsubscribe();
           resolve();
