@@ -23,7 +23,6 @@ export const runQuery = ({
 }: RunQueryProps): Promise<void> => {
   return new Promise((resolve, reject) => {
     let subRef: any = null;
-    let lastStateTime = performance.now();
 
     const unsubscribe = () => {
       if (subRef !== null) {
@@ -35,16 +34,13 @@ export const runQuery = ({
     const runner = createQueryRunner();
 
     subRef = runner.get().subscribe({
-      next: (data) => {
-        const currentTime = performance.now();
-        
+      next: (data) => {        
         if (data?.state === 'Done') {
           onResult(data);
           unsubscribe();
           resolve();
         }
         
-        lastStateTime = currentTime;
       },
       error: (error) => {
         console.error('Query error:', error);
