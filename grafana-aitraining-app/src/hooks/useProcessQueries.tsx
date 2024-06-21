@@ -16,7 +16,7 @@ const useProcessQueries = () => {
   const runQueries = async () => {
     console.log(`Starting all queries at ${new Date().toISOString()}`);
     setQueryStatus('loading');
-
+  
     const queryPromises = selectedRows.map(async (processData, index) => {
       console.log(`Preparing query ${index} at ${new Date().toISOString()}`);
       const startDate = new Date();
@@ -27,10 +27,10 @@ const useProcessQueries = () => {
         to: endDate,
         raw: { from: startDate.toLocaleString(), to: endDate.toLocaleString() },
       };
-
+  
       const query = {
         refId: 'A',
-        expr: '{job="o11y"}',
+        expr: `{job="o11y"} | process_uuid = \`${processData.process_uuid}\` |= \`\``,
         queryType: 'range',
       };
 
