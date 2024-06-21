@@ -19,10 +19,11 @@ const useProcessQueries = () => {
   
     const queryPromises = selectedRows.map(async (processData, index) => {
       console.log(`Preparing query ${index} at ${new Date().toISOString()}`);
-      console.log(`Process data:`, processData);
+
       const startDate = dateTime(processData.start_time);
-      const endDate = dateTime(processData.end_time);
-  
+      // If the process is still running, use the current time as the end time
+      let endDate = processData.status === 'running' ? dateTime(new Date()): dateTime(processData.end_time);
+
       const tmpTimeRange: TimeRange = {
         from: startDate,
         to: endDate,
