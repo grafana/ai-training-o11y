@@ -22,7 +22,6 @@ ENV GOCACHE=/opt/go/gocache \
 
 WORKDIR /go/src/ai-training-api
 
-COPY --link ai-training-api/vendor ./vendor
 COPY --link ai-training-api/go.* ./
 COPY --from=git_build_meta /git_meta/.git_* ./
 COPY --link ai-training-api ./
