@@ -11,11 +11,11 @@ const useProcessQueries = () => {
 
   const isReady = datasource.loading !== true;
 
-  const { selectedRows, appendResult, setQueryStatus } = useTrainingAppStore();
+  const { selectedRows, appendLokiResult: appendResult, setLokiQueryStatus } = useTrainingAppStore();
 
   const runQueries = async () => {
     console.log(`Starting all queries at ${new Date().toISOString()}`);
-    setQueryStatus('loading');
+    setLokiQueryStatus('loading');
   
     const queryPromises = selectedRows.map(async (processData, index) => {
       console.log(`Preparing query ${index} at ${new Date().toISOString()}`);
@@ -35,7 +35,7 @@ const useProcessQueries = () => {
   
       const query = {
         refId: 'A',
-        expr: `{job="o11y"} | process_uuid = \`${processData.process_uuid}\` |= \`\``,
+        expr: `{job="o11y"} | process_uuid = \`${processData.process_uuid}\``,
         queryType: 'range',
       };
 
@@ -63,10 +63,10 @@ const useProcessQueries = () => {
       console.log(`Awaiting all queries at ${new Date().toISOString()}`);
       await Promise.all(queryPromises);
       console.log(`All queries completed at ${new Date().toISOString()}`);
-      setQueryStatus('success');
+      setLokiQueryStatus('success');
     } catch (error) {
       console.error(`Error running queries at ${new Date().toISOString()}:`, error);
-      setQueryStatus('error');
+      setLokiQueryStatus('error');
     }
   };
 
