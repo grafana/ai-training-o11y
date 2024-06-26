@@ -1,7 +1,7 @@
 from .. import client
 from .. import logger
 
-def log(log, *, x_axis=None, section=None):
+def log(log, *, x_axis=None):
     """
     Sends a log to the Loki server
     :param log: The log message
@@ -21,21 +21,17 @@ def log(log, *, x_axis=None, section=None):
         if not isinstance(log[key], (int, float)):
             logger.error("Values in log must be numbers")
             return False
-        
-    # check that section is of type string
-    if section is not None and not isinstance(section, str):
-        logger.error("Section must be a string")
-        return False
-    
+
+
     if x_axis is None:
-        client.send_model_metrics(log, section=section)
+        client.send_model_metrics(log)
         return
-    
+
     # Check if x_axis exists
     if not isinstance(x_axis, dict) or len(x_axis) != 1:
         logger.error("x_axis must be a dict with one key")
         return False
-    
+
     # Check that x_axis' single key is a string, and its value is a number
     x_key = list(x_axis.keys())[0]
     x_value = x_axis[x_key]
@@ -50,7 +46,5 @@ def log(log, *, x_axis=None, section=None):
     if x_key in log.keys() and x_value != log[x_key]:
         logger.error("x_axis key must not be in your metrics, or must have the same value")
         return False
-    
 
-
-    client.send_model_metrics(log, x_axis=x_axis, section=section)
+    client.send_model_metrics(log, x_axis=x_axis)

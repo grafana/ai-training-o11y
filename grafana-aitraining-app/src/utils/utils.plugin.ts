@@ -1,17 +1,21 @@
 import React, { useContext } from 'react';
-import { AppRootProps } from '@grafana/data';
+import { AppRootProps, DataQueryResponseData } from '@grafana/data';
 
-// This is used to be able to retrieve the root plugin props anywhere inside the app.
-export const PluginPropsContext = React.createContext<AppRootProps | null>(null);
+export interface PluginProps extends AppRootProps {
+  getProcesses: () => Promise<DataQueryResponseData>;
+}
+
+export const PluginPropsContext = React.createContext<PluginProps | null>(null);
 
 export const usePluginProps = () => {
   const pluginProps = useContext(PluginPropsContext);
-
+  if (!pluginProps) {
+    throw new Error('usePluginProps must be used within a PluginPropsProvider');
+  }
   return pluginProps;
 };
 
-export const usePluginMeta = () => {
+export const useGetProcesses = () => {
   const pluginProps = usePluginProps();
-
-  return pluginProps?.meta;
+  return pluginProps.getProcesses;
 };

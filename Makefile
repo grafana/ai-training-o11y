@@ -6,11 +6,15 @@ build-ai-training-api-prod:
 	docker build -t grafana/ai-training-api -f ./ai-training-api/Dockerfile .
 
 ## Calls "mage" in the ai-training-app directory to build the app
-.phony: build-aitraining-app
+.PHONY: build-aitraining-app
 build-aitraining-app:
 	cd grafana-aitraining-app && mage -v
 	cd grafana-aitraining-app && yarn install
 	cd grafana-aitraining-app && yarn build
+
+.PHONY: dev-frontend
+dev-frontend:
+	cd grafana-aitraining-app && yarn dev
 
 # Brings up grafana, associated databases, and the ai-training-api
 .PHONY: docker
