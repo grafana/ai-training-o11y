@@ -20,13 +20,15 @@ const useProcessQueries = () => {
     const queryPromises = selectedRows.map(async (processData, index) => {
       console.log(`Preparing query ${index} at ${new Date().toISOString()}`);
 
+      console.log('processData', processData);
+
       const startDate = dateTime(processData.start_time);
       // If the process is still running, use the current time as the end time
       let endDate = processData.status === 'running' ? dateTime(new Date()): dateTime(processData.end_time);
 
       const tmpTimeRange: TimeRange = {
-        from: startDate,
-        to: endDate,
+        from: dateTime('2024-06-26T00:01:00.001Z'), // startDate,
+        to: dateTime('2024-06-26T10:30:00.001Z'), // endDate,
         raw: {
           from: startDate.toISOString(),
           to: endDate.toISOString()
@@ -35,11 +37,20 @@ const useProcessQueries = () => {
   
       const query = {
         refId: 'A',
+        expr: `{job="o11y"} | process_uuid = \`8abb7f97-1e36-4847-9754-d337a6d0ec6e\` |= \`\``,
+        queryType: 'range',
+      };
+      
+/*
+      const query = {
+        refId: 'A',
         expr: `{job="o11y"} | process_uuid = \`${processData.process_uuid}\` |= \`\``,
         queryType: 'range',
       };
+*/
 
       console.log(`Starting query ${index} execution at ${new Date().toISOString()}`);
+
       try {
         await runQuery({
           datasource: datasource.value,
@@ -48,7 +59,7 @@ const useProcessQueries = () => {
           timeRange: tmpTimeRange,
           timeZone: 'EST',
           onResult: (data: any) => {
-            console.log(`Query ${index} completed at ${new Date().toISOString()}`);
+            console.log(`Query ${index} completed at ${new Date().toISOString()}`, data);
             appendResult(processData, data);
           },
         });
