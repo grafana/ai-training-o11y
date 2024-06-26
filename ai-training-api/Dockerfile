@@ -22,14 +22,13 @@ ENV GOCACHE=/opt/go/gocache \
 
 WORKDIR /go/src/ai-training-api
 
-COPY --link ai-training-api/vendor ./vendor
 COPY --link ai-training-api/go.* ./
 COPY --from=git_build_meta /git_meta/.git_* ./
 COPY --link ai-training-api ./
 
 FROM prep AS development
 
-RUN --mount=type=cache,id=go-cache-ai-training-api,target=/opt/go go install github.com/cosmtrek/air@latest
+RUN --mount=type=cache,id=go-cache-ai-training-api,target=/opt/go go install github.com/air-verse/air@latest
 
 FROM prep as build
 
