@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { PanelData } from '@grafana/data';
 
 export type ProcessStatus = 'empty' | 'running' | 'finished' | 'crashed' | 'timed out';
-type QueryStatus =
+export type QueryStatus =
   | 'idle'
   | 'loading'
   | 'success'
@@ -29,6 +29,10 @@ interface TrainingAppState {
   tab: 'table' | 'graphs';
   setTab: (tab: 'table' | 'graphs') => void;
 
+  // Process table query state
+  processesQueryStatus: QueryStatus;
+  setProcessesQueryStatus: (status: QueryStatus) => void;
+
   // Rendered rows state
   renderedRows: RowData[];
   isSelected: boolean[];
@@ -42,21 +46,24 @@ interface TrainingAppState {
   addSelectedRow: (row: RowData) => void;
   removeSelectedRow: (processUuid: string) => void;
 
-  // Query result state
-  queryStatus: QueryStatus;
-  queryData: Record<string, QueryResultData>;
-  resetResults: () => void;
-  appendResult: (processData: RowData, result: PanelData | undefined) => void;
-  setQueryStatus: (status: QueryStatus) => void;
+  // Loki query result state
+  lokiQueryStatus: QueryStatus;
+  lokiQueryData: Record<string, QueryResultData>;
+  resetLokiResults: () => void;
+  appendLokiResult: (processData: RowData, result: PanelData | undefined) => void;
+  setLokiQueryStatus: (status: QueryStatus) => void;
 
-  organizedData: any; // Add the organizedData property
-  setOrganizedData: (data: any) => void; // Add the setOrganizedData function
+  organizedLokiData: any; // Add the organizedData property
+  setOrganizedLokiData: (data: any) => void; // Add the setOrganizedData function
 }
 
 export const useTrainingAppStore = create<TrainingAppState>()((set) => ({
   // Tab state
   tab: 'table',
   setTab: (tab) => set(() => ({ tab })),
+
+  processesQueryStatus: 'idle',
+  setProcessesQueryStatus: (status: QueryStatus) => set(() => ({ processesQueryStatus: status })),
 
   // Rendered rows state
   renderedRows: [],
@@ -109,14 +116,14 @@ export const useTrainingAppStore = create<TrainingAppState>()((set) => ({
     }),
 
   // Query result state
-  queryData: {},
-  queryStatus: 'idle',
-  resetResults: () => set(() => ({ queryStatus: 'idle', queryData: {} })),
-  appendResult: (processData, result) =>
+  lokiQueryData: {},
+  lokiQueryStatus: 'idle',
+  resetLokiResults: () => set(() => ({ lokiQueryStatus: 'idle', lokiQueryData: {} })),
+  appendLokiResult: (processData, result) =>
     set((state) => ({
-      queryData: { ...state.queryData, [processData.process_uuid]: { processData, lokiData: result } },
+      lokiQueryData: { ...state.lokiQueryData, [processData.process_uuid]: { processData, lokiData: result } },
     })),
-  setQueryStatus: (status: QueryStatus) => set(() => ({ queryStatus: status })),
-  organizedData: {},
-  setOrganizedData: (data) => set((state) => ({ ...state, organizedData: data })), // Define the setOrganizedData function
+  setLokiQueryStatus: (status: QueryStatus) => set(() => ({ lokiQueryStatus: status })),
+  organizedLokiData: {},
+  setOrganizedLokiData: (data) => set((state) => ({ ...state, organizedLokiData: data })), // Define the setOrganizedData function
 }));

@@ -14,6 +14,8 @@ export const Home = () => {
   const {
     tab,
     setTab,
+    processesQueryStatus,
+    setProcessesQueryStatus,
     renderedRows,
     setRenderedRows,
     isSelected,
@@ -40,17 +42,47 @@ export const Home = () => {
 
   useEffect(() => {
     const fetchProcesses = async () => {
+      setProcessesQueryStatus('loading');
       try {
         const response = await getProcesses();
         const data = response.data;
         setRenderedRows(data);
-      } catch (error) {
+        setProcessesQueryStatus('success');
+      } catch (error: unknown) {
         console.error('Error fetching processes:', error);
+        
+        if (error && typeof error === 'object') {
+          if ('status' in error) {
+            // Assuming the error object might have a status property
+            const status = (error as { status: number }).status;
+            switch (status) {
+              case 401:
+                setProcessesQueryStatus('unauthorized');
+                break;
+              case 404:
+                setProcessesQueryStatus('notFound');
+                break;
+              case 500:
+                setProcessesQueryStatus('serverError');
+                break;
+              default:
+                setProcessesQueryStatus('error');
+            }
+          } else if ('message' in error) {
+            // If there's a message property, log it
+            console.error((error as { message: string }).message);
+            setProcessesQueryStatus('error');
+          } else {
+            setProcessesQueryStatus('error');
+          }
+        } else {
+          setProcessesQueryStatus('error');
+        }
       }
     };
-
+  
     fetchProcesses();
-  }, [getProcesses, setRenderedRows]);
+  }, [getProcesses, setRenderedRows, setProcessesQueryStatus]);
 
   const handleTabChange = (newTab: 'table' | 'graphs') => (event: React.MouseEvent<HTMLElement>) => {
     event.preventDefault();
@@ -80,6 +112,7 @@ export const Home = () => {
       {tab === 'table' &&
         <TableTab
           rows={renderedRows}
+          processQueryStatus={processesQueryStatus}
           isSelected={isSelected}
           setIsSelected={setIsSelected}
           addSelectedRow={addSelectedRow}
