@@ -17,7 +17,7 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.build.targets.sdist]
-packages = ["src/o11y", "src/go-plugin"]
+packages = ["src/o11y", "src/o11y-go"]
 
 [tool.hatch.build.targets.wheel.hooks.custom]
 path = "hatch_build.py"
