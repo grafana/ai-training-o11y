@@ -44,7 +44,7 @@ class CustomBuildHook(BuildHookInterface):
             go_os_flag = "linux"
 
         go_bin = self.build_go(go_os_flag, go_arch_flag)
-        build_data['force_include'][go_bin] = "/o11y/o11y-go"
+        build_data['force_include'][go_bin] = "/o11y/_internal/o11y-go"
 
     # Substantially identical to the same function from wandb's exporter
     # It turns out this is a pretty tricky problem
