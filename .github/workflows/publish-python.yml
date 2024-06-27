@@ -1,0 +1,45 @@
+name: Build and Publish to PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish to PyPI'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+jobs:
+  build_and_publish:
+    name: Build and publish Python distribution
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.22'
+
+    - name: Install Hatch
+      run: pip install hatch
+
+    - name: Build package
+      run: make exporter-wheels
+
+    - name: Publish to PyPI
+      if: ${{ github.event.inputs.publish == 'true' }}
+      env:
+        HATCH_INDEX_USER: __token__
+        HATCH_INDEX_AUTH: ${{ secrets.PYPI_API_TOKEN }}
+      run: |
+        cd o11y
+        hatch publish dist/*
