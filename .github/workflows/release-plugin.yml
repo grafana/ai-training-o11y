@@ -8,7 +8,10 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    uses: sandersaarond/plugin-actions/build-plugin@sandersaarond/build-plugin-add-workdir
-    with:
-      policy_token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build Plugin
+        uses: SandersAaronD/plugin-actions/build-plugin@sandersaarond/build-plugin-add-workdir
+        with:
+          working-directory: grafana-aitraining-app
