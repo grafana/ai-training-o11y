@@ -30,6 +30,10 @@ inputs:
     description: "Version of node"
     required: false
     default: "20"
+  working-directory:
+    description: "The working directory where the plugin is located"
+    required: false
+    default: "."
 
 runs:
   using: "composite"
@@ -46,10 +50,12 @@ runs:
     - name: Install dependencies
       run: ${{ github.action_path }}/pm.sh install
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
 
     - name: Build and test frontend
       run: ${{ github.action_path }}/pm.sh build
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
 
     - name: Check for backend
       id: check-for-backend
@@ -59,6 +65,7 @@ runs:
           echo "has-backend=true" >> $GITHUB_OUTPUT
         fi
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
 
     - name: Test backend
       if: steps.check-for-backend.outputs.has-backend == 'true'
@@ -66,6 +73,7 @@ runs:
       with:
         version: latest
         args: coverage
+        working-directory: ${{ inputs.working-directory }}
 
     - name: Build backend
       if: steps.check-for-backend.outputs.has-backend == 'true'
@@ -73,6 +81,7 @@ runs:
       with:
         version: latest
         args: buildAll
+        working-directory: ${{ inputs.working-directory }}
 
     - name: Warn missing Grafana access policy token
       run: |
@@ -88,6 +97,7 @@ runs:
         GRAFANA_ACCESS_POLICY_TOKEN: ${{ inputs.policy_token }}
         GRAFANA_API_KEY: ${{ inputs.grafana_token }}
       if: ${{ inputs.policy_token != '' }}
+      working-directory: ${{ inputs.working-directory }}
 
     - name: Get plugin metadata
       id: metadata
@@ -108,6 +118,7 @@ runs:
 
         echo "github-tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
 
     - name: Read changelog
       id: changelog
@@ -115,10 +126,12 @@ runs:
         awk '/^## / {s++} s == 1 {print}' CHANGELOG.md > release_notes.md
         echo "path=release_notes.md" >> $GITHUB_OUTPUT
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
 
     - name: Check package version
       run: if [ "v${{ steps.metadata.outputs.plugin-version }}" != "${{ steps.metadata.outputs.github-tag }}" ]; then printf "\033[0;31mPlugin version doesn't match tag name. The tag should be v${{ steps.metadata.outputs.plugin-version }} \033[0m\n"; exit 1; fi
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
 
     - name: Package plugin
       id: package-plugin
@@ -127,6 +140,7 @@ runs:
         zip ${{ steps.metadata.outputs.archive }} ${{ steps.metadata.outputs.plugin-id }} -r
         sha1sum ${{ steps.metadata.outputs.archive }} | cut -f1 -d' ' > ${{ steps.metadata.outputs.archive-sha1sum }}
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
 
     - name: Validate plugin
       run: |
@@ -136,6 +150,7 @@ runs:
         popd
         plugincheck2 -config ./plugin-validator/config/default.yaml ${{ steps.metadata.outputs.archive }}
       shell: bash
+      working-directory: ${{ inputs.working-directory }}
 
     - name: Create Github release
       uses: softprops/action-gh-release@v2
@@ -144,8 +159,8 @@ runs:
         generate_release_notes: true
         token: ${{ inputs.token }}
         files: |
-          ./${{ steps.metadata.outputs.archive }}
-          ./${{ steps.metadata.outputs.archive-sha1sum }}
+          ${{ inputs.working-directory }}/${{ steps.metadata.outputs.archive }}
+          ${{ inputs.working-directory }}/${{ steps.metadata.outputs.archive-sha1sum }}
         body: |
           **This Github draft release has been created for your plugin.**
 
