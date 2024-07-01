@@ -9,6 +9,6 @@ permissions:
 
 jobs:
   release:
-    uses: grafana/ai-training-o11y/.github/workflows/composite/build-plugin.yml@build-plugin
+    uses: sandersaarond/ai-training-o11y/.github/workflows/build-plugin.yml@build-plugin
     with:
       policy_token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
