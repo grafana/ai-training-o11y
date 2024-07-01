@@ -9,6 +9,6 @@ permissions:
 
 jobs:
   release:
-    uses: sandersaarond/ai-training-o11y/.github/workflows/build-plugin.yml@build-plugin
+    uses: sandersaarond/plugin-actions/build-plugin@sandersaarond/build-plugin-add-workdir
     with:
       policy_token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
