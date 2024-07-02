@@ -44,7 +44,7 @@ class CustomBuildHook(BuildHookInterface):
             go_os_flag = "linux"
 
         go_bin = self.build_go(go_os_flag, go_arch_flag)
-        build_data['force_include'][go_bin] = "/o11y/go-plugin"
+        build_data['force_include'][go_bin] = "/o11y/_internal/o11y-go"
 
     # Substantially identical to the same function from wandb's exporter
     # It turns out this is a pretty tricky problem
@@ -111,14 +111,14 @@ class CustomBuildHook(BuildHookInterface):
             go_bin,
             'build',
             '-o',
-            './dist/go-plugin',
+            './dist/o11y-go',
             '-v',
         ]
 
         try:
             result = subprocess.run(
                 go_build_cmd,
-                cwd='./src/go-plugin/',
+                cwd='./src/o11y-go/',
                 check=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -130,4 +130,4 @@ class CustomBuildHook(BuildHookInterface):
             error_message = f"Error building Go plugin:\n{e.stderr}"
             raise RuntimeError(error_message) from e
         
-        return pathlib.Path("src", "go-plugin", "dist", "go-plugin").as_posix()
+        return pathlib.Path("src", "o11y-go", "dist", "o11y-go").as_posix()

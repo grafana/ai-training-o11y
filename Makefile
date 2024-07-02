@@ -62,5 +62,5 @@ jupytorch: exporter-build
 .PHONY: clean
 clean:
 	cd o11y && rm -rf __pycache__ .cache .ipython .ipynb_checkpoints .jupyter .local .npm dist
-	cd o11y/src/go-plugin && rm -rf dist
+	cd o11y/src/o11y-go && rm -rf dist
 # This only cleans the o11y build folders, not the other two modules
