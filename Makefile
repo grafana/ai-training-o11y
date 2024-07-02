@@ -41,7 +41,7 @@ jupyter-exporter:
 # We may need to add more of these eventually because some HPC clusters run outdated architectures
 .PHONY: exporter-wheels
 exporter-wheels:
-	@for os in linux mac windows; do \
+	@for os in linux darwin windows; do \
 		for arch in amd64 arm64; do \
 			echo "Building for OS: $$os, Architecture: $$arch"; \
 			cd o11y && TARGET_OS=$$os TARGET_ARCH=$$arch hatch build -t wheel; \
