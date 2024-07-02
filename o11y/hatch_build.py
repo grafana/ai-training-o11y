@@ -20,26 +20,26 @@ class CustomBuildHook(BuildHookInterface):
             go_arch_flag = None
         elif target_os == 'windows':
             if target_arch == 'arm64':
-                build_data['tag'] = f"py3-none-win_aarch64"
+                build_data['tag'] = f"py3-none-win_arm64"
                 go_arch_flag = "arm64"
             else:
                 build_data['tag'] = f"py3-none-win_amd64"
                 go_arch_flag = "amd64"
             go_os_flag = "windows"
-        elif target_os == 'mac':
+        elif target_os == 'darwin':  # macOS
             if target_arch == 'arm64':
-                build_data['tag'] = f"py3-none-macosx_13_0_aarch64"
+                build_data['tag'] = f"py3-none-macosx_11_0_arm64"
                 go_arch_flag = "arm64"
             else:
-                build_data['tag'] = f"py3-none-macosx_13_0_x86_64"
+                build_data['tag'] = f"py3-none-macosx_10_9_x86_64"
                 go_arch_flag = "amd64"
             go_os_flag = "darwin"
         elif target_os == 'linux':
             if target_arch == 'arm64':
-                build_data['tag'] = f"py3-none-linux_aarch64"
+                build_data['tag'] = f"py3-none-manylinux2014_aarch64"
                 go_arch_flag = "arm64"
             else:
-                build_data['tag'] = f"py3-none-linux_x86_64"
+                build_data['tag'] = f"py3-none-manylinux2014_x86_64"
                 go_arch_flag = "amd64"
             go_os_flag = "linux"
 
