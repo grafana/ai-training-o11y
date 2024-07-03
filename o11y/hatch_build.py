@@ -20,31 +20,31 @@ class CustomBuildHook(BuildHookInterface):
             go_arch_flag = None
         elif target_os == 'windows':
             if target_arch == 'arm64':
-                build_data['tag'] = f"py3-none-win_aarch64"
+                build_data['tag'] = f"py3-none-win_arm64"
                 go_arch_flag = "arm64"
             else:
                 build_data['tag'] = f"py3-none-win_amd64"
                 go_arch_flag = "amd64"
             go_os_flag = "windows"
-        elif target_os == 'mac':
+        elif target_os == 'darwin':  # macOS
             if target_arch == 'arm64':
-                build_data['tag'] = f"py3-none-macosx_13_0_aarch64"
+                build_data['tag'] = f"py3-none-macosx_11_0_arm64"
                 go_arch_flag = "arm64"
             else:
-                build_data['tag'] = f"py3-none-macosx_13_0_x86_64"
+                build_data['tag'] = f"py3-none-macosx_10_9_x86_64"
                 go_arch_flag = "amd64"
             go_os_flag = "darwin"
         elif target_os == 'linux':
             if target_arch == 'arm64':
-                build_data['tag'] = f"py3-none-linux_aarch64"
+                build_data['tag'] = f"py3-none-manylinux2014_aarch64"
                 go_arch_flag = "arm64"
             else:
-                build_data['tag'] = f"py3-none-linux_x86_64"
+                build_data['tag'] = f"py3-none-manylinux2014_x86_64"
                 go_arch_flag = "amd64"
             go_os_flag = "linux"
 
         go_bin = self.build_go(go_os_flag, go_arch_flag)
-        build_data['force_include'][go_bin] = "/o11y/go-plugin"
+        build_data['force_include'][go_bin] = "/o11y/_internal/o11y-go"
 
     # Substantially identical to the same function from wandb's exporter
     # It turns out this is a pretty tricky problem
@@ -111,14 +111,14 @@ class CustomBuildHook(BuildHookInterface):
             go_bin,
             'build',
             '-o',
-            './dist/go-plugin',
+            './dist/o11y-go',
             '-v',
         ]
 
         try:
             result = subprocess.run(
                 go_build_cmd,
-                cwd='./src/go-plugin/',
+                cwd='./src/o11y-go/',
                 check=True,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -130,4 +130,4 @@ class CustomBuildHook(BuildHookInterface):
             error_message = f"Error building Go plugin:\n{e.stderr}"
             raise RuntimeError(error_message) from e
         
-        return pathlib.Path("src", "go-plugin", "dist", "go-plugin").as_posix()
+        return pathlib.Path("src", "o11y-go", "dist", "o11y-go").as_posix()

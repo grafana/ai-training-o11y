@@ -17,54 +17,51 @@ interface GraphsProps {
 }
 
 export const GraphsTab: React.FC<GraphsProps> = ({ rows }) => {
-  const { queryStatus, queryData, organizedData, resetResults, setOrganizedData } = useTrainingAppStore();
+  const {
+    lokiQueryStatus,
+    lokiQueryData,
+    organizedLokiData,
+    resetLokiResults,
+    setOrganizedLokiData
+  } = useTrainingAppStore();
   const { isReady, runQueries } = useProcessQueries();
   const shouldRunQueries = useRef(true);
 
   useEffect(() => {
     if (isReady && rows.length > 0 && shouldRunQueries.current) {
       shouldRunQueries.current = false;
-      resetResults();
+      resetLokiResults();
       runQueries();
     }
-  }, [isReady, rows, resetResults, runQueries]);
+  }, [isReady, rows, resetLokiResults, runQueries]);
 
   useEffect(() => {
     shouldRunQueries.current = true;
   }, [rows]);
 
   useEffect(() => {
-    if (queryStatus === 'success' && Object.keys(queryData).length > 0) {
-      const organized = reshapeModelMetrics(queryData);
-      setOrganizedData(organized);
+    if (lokiQueryStatus === 'success' && Object.keys(lokiQueryData).length > 0) {
+      const organized = reshapeModelMetrics(lokiQueryData);
+      setOrganizedLokiData(organized);
     }
-  }, [queryStatus, queryData, setOrganizedData]);
+  }, [lokiQueryStatus, lokiQueryData, setOrganizedLokiData]);
 
   if (!isReady) {
     return <div>Loading...</div>;
   }
 
-  if (queryStatus === 'loading') {
+  if (lokiQueryStatus === 'loading') {
     return (
       <div>
         Running...
-        <button
-          onClick={() => {
-            resetResults();
-            shouldRunQueries.current = true;
-          }}
-        >
-          Reset Results
-        </button>
+        <button onClick={() => { resetLokiResults(); shouldRunQueries.current = true; }}>Reset Results</button>
       </div>
     );
   }
 
-  if (!organizedData) {
+  if (!organizedLokiData) {
     return <div>No data</div>;
   }
-
-  console.log('final data', { queryData, organizedData });
 
   /// ---- FAKE DATA BELOW -----
 
@@ -137,31 +134,23 @@ export const GraphsTab: React.FC<GraphsProps> = ({ rows }) => {
 
   return (
     <div>
-      <div style={{ marginBottom: '20px', padding: '20px' }}>
-        <h3>Scenes:</h3>
-        <SceneGraph panels={[metricPanel1, metricPanel2, metricPanel3]} />
-      </div>
-
-      <button
-        onClick={() => {
-          resetResults();
-          shouldRunQueries.current = true;
-        }}
-      >
-        Reset Results
-      </button>
-
+      <button onClick={() => { resetLokiResults(); shouldRunQueries.current = true; }}>Reset Results</button>
+      
       <div style={{ marginBottom: '20px' }}>
         <h3>Organized Data:</h3>
-        {organizedData ? <pre>{JSON.stringify(organizedData, null, 2)}</pre> : <p>No organized data available</p>}
+        {organizedLokiData ? (
+          <pre>{JSON.stringify(organizedLokiData, null, 2)}</pre>
+        ) : (
+          <p>No organized data available</p>
+        )}
       </div>
 
       <div style={{ marginBottom: '20px' }}>
         <h3>Query Data:</h3>
-        {Object.keys(queryData).map((key) => (
+        {Object.keys(lokiQueryData).map((key) => (
           <React.Fragment key={key}>
             <h4>Results for process: {key}</h4>
-            <pre>{JSON.stringify(queryData[key].lokiData?.series[0].fields, null, 2)}</pre>
+            <pre>{JSON.stringify(lokiQueryData[key].lokiData?.series[0].fields, null, 2)}</pre>
           </React.Fragment>
         ))}
       </div>

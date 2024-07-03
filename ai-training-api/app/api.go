@@ -50,6 +50,7 @@ func (a *App) registerNewProcess(tenantID string, req *http.Request) (interface{
 	process.ID = uuid.New()
 	process.TenantID = tenantID
 	process.StartTime = time.Now()
+	process.Status = "running"  // Set default status to "running"
 
 	// Store process in DB.
 	err := a.db(req.Context()).Model(&model.Process{}).Create(process).Error

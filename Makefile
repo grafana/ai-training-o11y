@@ -41,7 +41,7 @@ jupyter-exporter:
 # We may need to add more of these eventually because some HPC clusters run outdated architectures
 .PHONY: exporter-wheels
 exporter-wheels:
-	@for os in linux mac windows; do \
+	@for os in linux darwin windows; do \
 		for arch in amd64 arm64; do \
 			echo "Building for OS: $$os, Architecture: $$arch"; \
 			cd o11y && TARGET_OS=$$os TARGET_ARCH=$$arch hatch build -t wheel; \
@@ -62,5 +62,5 @@ jupytorch: exporter-build
 .PHONY: clean
 clean:
 	cd o11y && rm -rf __pycache__ .cache .ipython .ipynb_checkpoints .jupyter .local .npm dist
-	cd o11y/src/go-plugin && rm -rf dist
+	cd o11y/src/o11y-go && rm -rf dist
 # This only cleans the o11y build folders, not the other two modules
