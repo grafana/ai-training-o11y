@@ -2,42 +2,45 @@ import React from 'react';
 
 import { PanelData } from '@grafana/data';
 import {
+  SceneObjectState,
+  SceneObjectBase,
+  SceneComponentProps,
   EmbeddedScene,
   SceneFlexLayout,
   SceneFlexItem,
+  VizPanel,
   PanelBuilders,
-  SceneDataNode
-//  SceneTimeRange,
+  SceneDataNode,
 } from '@grafana/scenes';
 import { LineInterpolation, TooltipDisplayMode } from '@grafana/schema';
 
+export interface MetricPanel {
+  pluginId: string;
+  title: string;
+  data: PanelData;
+}
 interface SceneGraphProps {
-  data?: PanelData;
+  panels?: MetricPanel[];
 }
 
-export const SceneGraph: React.FC<SceneGraphProps> = ({ data }) => {
-  const myTimeSeriesPanel = PanelBuilders.timeseries().setTitle('My first panel');
-
+const getVizPanel = (data: PanelData, pluginId: string, title: string) => {
   const dataNode = new SceneDataNode({ data });
-  myTimeSeriesPanel.setData(dataNode);
-  myTimeSeriesPanel.setOption('legend', { asTable: true }).setOption('tooltip', { mode: TooltipDisplayMode.Single });
-  myTimeSeriesPanel.setDecimals(2).setUnit('ms');
-  myTimeSeriesPanel.setCustomFieldConfig('lineInterpolation', LineInterpolation.Smooth);
-  myTimeSeriesPanel.setOverrides((b) =>
-    b.matchFieldsWithNameByRegex('/metrics/').overrideDecimals(4).overrideCustomFieldConfig('lineWidth', 5)
-  );
+  return new SceneFlexItem({
+    body: new VizPanel({
+      pluginId,
+      title,
+      $data: dataNode,
+    }),
+    minHeight: 300,
+    maxHeight: 300,
+  });
+};
 
-  const myPanel = myTimeSeriesPanel.build();
-
+export const SceneGraph: React.FC<SceneGraphProps> = ({ panels }) => {
   const scene = new EmbeddedScene({
     body: new SceneFlexLayout({
-      children: [
-        new SceneFlexItem({
-          body: myPanel,
-        }),
-      ],
+      children: panels?.map((p) => getVizPanel(p.data, p.pluginId, p.title)) || [],
     }),
   });
-
   return <scene.Component model={scene} />;
 };
