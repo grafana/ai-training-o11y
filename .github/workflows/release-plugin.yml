@@ -14,6 +14,39 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Build Plugin
-        uses: SandersAaronD/plugin-actions/build-plugin@sandersaarond/build-plugin-add-workdir
+        id: build_plugin
+        uses: ./.github/workflows/build-plugin
         with:
           working-directory: grafana-aitraining-app
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Publish new plugin version on grafana.com
+        env:
+          GCOM_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
+          VERSION: ${{ steps.get_version.outputs.VERSION }}
+          ARCHIVE_URL: ${{ steps.build_plugin.outputs.archive-url }}
+          ARCHIVE_SHA1SUM_URL: ${{ steps.build_plugin.outputs.archive-sha1sum-url }}
+        run: |
+          echo "Publish new plugin version on grafana.com:"
+          echo "Plugin version: ${VERSION}"
+          
+          # Download the SHA1 sum
+          SHA1=$(cat ${{ steps.build_plugin.outputs.archive-sha1sum }})
+          result=$(curl -H "Authorization: Bearer $GCOM_TOKEN" \
+            -H "Content-Type: application/json" \
+            https://grafana.com/api/plugins -d @- << EOF
+            {
+              "url": "https://github.com/${{ github.repository }}/tree/${{ github.ref_name }}",
+              "download": {
+                "any": {
+                  "url": "${ARCHIVE_URL}",
+                  "sha1": "${SHA1}"
+                }
+              }
+            }
+            EOF
+          )
+          echo "Result: $result"
