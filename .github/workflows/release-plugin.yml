@@ -17,6 +17,7 @@ jobs:
         id: build_plugin
         uses: ./.github/workflows/build-plugin
         with:
+          policy-token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
           working-directory: grafana-aitraining-app
 
       - name: Get version from tag
