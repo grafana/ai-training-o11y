@@ -6,8 +6,10 @@
   "backend": true,
   "executable": "gpx_grafana-aitraining-app",
   "info": {
-    "keywords": ["app"],
-    "description": "Track compare and visualize your ml models with 5 lines of code",
+    "keywords": [
+      "app"
+    ],
+    "description": "Observe your AI training workloads with Grafana",
     "author": {
       "name": "Grafana labs"
     },
