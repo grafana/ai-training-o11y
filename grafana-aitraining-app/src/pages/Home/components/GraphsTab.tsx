@@ -65,16 +65,24 @@ export const GraphsTab: React.FC<GraphsProps> = ({ rows }) => {
     return <div>No data</div>;
   }
 
+  const startTime = dateTime(organizedLokiData.startTime);
+  const endTime = dateTime(organizedLokiData.endTime);
+
   const tmpTimeRange: TimeRange = {
-    from: dateTime(organizedLokiData.startTime), // startDate,
-    to: dateTime(organizedLokiData.endTime), // endDate,
+    from: startTime,
+    to: endTime,
     raw: {
-      from: dateTime(organizedLokiData.startTime).toISOString(),
-      to: dateTime(organizedLokiData.endTime).toISOString(),
+      from: startTime.toISOString(),
+      to: endTime.toISOString(),
     },
   };
 
   const panelList: MetricPanel[] = organizedLokiData.meta.keys.map((key: string) => {
+    const trendLine = Object.keys(organizedLokiData.data[key]).map((processId: any) => {
+      const line = organizedLokiData.data[key][processId];
+      return line.map((m: any, i: number) => i);
+    })[0];
+
     const panel: PanelData = {
       state: LoadingState.Done,
       timeRange: tmpTimeRange,
@@ -83,9 +91,9 @@ export const GraphsTab: React.FC<GraphsProps> = ({ rows }) => {
           name: key,
           fields: [
             {
-              name: 'Time',
-              type: FieldType.time,
-              values: [],
+              name: 'Line',
+              type: FieldType.number,
+              values: trendLine,
               config: {},
             },
             ...Object.keys(organizedLokiData.data[key]).map((processId: any) => {
@@ -93,7 +101,7 @@ export const GraphsTab: React.FC<GraphsProps> = ({ rows }) => {
               return {
                 name: 'Line',
                 type: FieldType.number,
-                values: [JSON.stringify(line)],
+                values: [...line],
                 config: {},
               };
             }),
@@ -103,14 +111,14 @@ export const GraphsTab: React.FC<GraphsProps> = ({ rows }) => {
       ],
     };
     return {
-      pluginId: 'timeseries',
+      pluginId: 'trend',
       title: key,
       data: panel,
     };
   });
 
   return (
-    <div style={{ marginTop: '10px'}}>
+    <div style={{ marginTop: '10px' }}>
       <div>
         <SceneGraph panels={panelList} />
       </div>
