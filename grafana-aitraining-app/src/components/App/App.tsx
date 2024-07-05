@@ -1,6 +1,12 @@
 import React from 'react';
+
 import { AppRootProps } from '@grafana/data';
 import { sceneUtils } from '@grafana/scenes';
+
+import { parse, stringify } from 'query-string';
+import { QueryParamProvider } from 'use-query-params';
+import { ReactRouter5Adapter } from 'use-query-params/adapters/react-router-5';
+
 import { PluginPropsContext } from '../../utils/utils.plugin';
 import { Routes } from '../Routes';
 import { TrainingApiDatasource } from '../../datasource/Datasource';
@@ -27,9 +33,17 @@ export class App extends React.PureComponent<AppRootProps> {
 
   render() {
     return (
-      <PluginPropsContext.Provider value={{ ...this.props, getProcesses: this.getProcesses }}>
-        <Routes />
-      </PluginPropsContext.Provider>
+      <QueryParamProvider
+        adapter={ReactRouter5Adapter}
+        options={{
+          searchStringToObject: parse,
+          objectToSearchString: stringify,
+        }}
+      >
+        <PluginPropsContext.Provider value={{ ...this.props, getProcesses: this.getProcesses }}>
+          <Routes />
+        </PluginPropsContext.Provider>
+      </QueryParamProvider>
     );
   }
 }

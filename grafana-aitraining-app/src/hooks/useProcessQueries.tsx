@@ -27,8 +27,8 @@ const useProcessQueries = () => {
       let endDate = processData.status === 'running' ? dateTime(new Date()): dateTime(processData.end_time);
 
       const tmpTimeRange: TimeRange = {
-        from: dateTime('2024-06-26T00:01:00.001Z'), // startDate,
-        to: dateTime('2024-06-26T10:30:00.001Z'), // endDate,
+        from: startDate,
+        to: endDate,
         raw: {
           from: startDate.toISOString(),
           to: endDate.toISOString()

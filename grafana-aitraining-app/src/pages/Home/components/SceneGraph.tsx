@@ -2,17 +2,12 @@ import React from 'react';
 
 import { PanelData } from '@grafana/data';
 import {
-  SceneObjectState,
-  SceneObjectBase,
-  SceneComponentProps,
   EmbeddedScene,
   SceneFlexLayout,
   SceneFlexItem,
   VizPanel,
-  PanelBuilders,
   SceneDataNode,
 } from '@grafana/scenes';
-import { LineInterpolation, TooltipDisplayMode } from '@grafana/schema';
 
 export interface MetricPanel {
   pluginId: string;
