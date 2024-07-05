@@ -26,7 +26,6 @@ export const runQuery = ({
 
     const unsubscribe = () => {
       if (subRef !== null) {
-        console.log('unsubscribing');
         subRef.unsubscribe();
       }
     }
