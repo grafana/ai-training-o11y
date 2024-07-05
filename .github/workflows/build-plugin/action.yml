@@ -1,0 +1,169 @@
+name: "Grafana Build Plugin"
+description: "Builds a Grafana plugin"
+
+outputs:
+  archive:
+    description: "The path to the plugin archive (zip)."
+    value: ${{ steps.metadata.outputs.archive }}
+  archive-sha1sum:
+    description: "The path to the plugin archive sha1sum."
+    value: ${{ steps.metadata.outputs.archive-sha1sum }}
+  archive-url:
+    description: "The URL to the plugin archive."
+    value: ${{ steps.metadata.outputs.archive-url }}
+  archive-sha1sum-url:
+    description: "The URL to the plugin archive sha1sum."
+    value: ${{ steps.metadata.outputs.archive-sha1sum-url }}
+
+inputs:
+  token:
+    description: "Token for the repository. Can be passed in using `{{ secrets.GITHUB_TOKEN }}`."
+    required: false
+    default: "${{ github.token }}"
+  policy_token:
+    description: "Grafana access policy token. https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin#generate-an-access-policy-token"
+    required: false
+    default: ""
+  grafana_token:
+    description: "[deprecated] Grafana API Key to sign a plugin. Prefer `policy_token`."
+    required: false
+    default: ""
+  go-version:
+    description: "Version of go"
+    required: false
+    default: "1.22"
+  node-version:
+    description: "Version of node"
+    required: false
+    default: "20"
+  working-directory:
+    description: "The working directory where the plugin is located"
+    required: false
+    default: "."
+
+runs:
+  using: "composite"
+  steps:
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "${{ inputs.node-version }}"
+
+    - name: Setup Go environment
+      uses: actions/setup-go@v5
+      with:
+        go-version: "${{ inputs.go-version }}"
+
+    - name: Install dependencies
+      run: ${{ github.action_path }}/pm.sh install
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+
+    - name: Build and test frontend
+      run: ${{ github.action_path }}/pm.sh build
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+
+    - name: Check for backend
+      id: check-for-backend
+      run: |
+        if [ -f "Magefile.go" ]
+        then
+          echo "has-backend=true" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+
+    - name: Test backend
+      if: steps.check-for-backend.outputs.has-backend == 'true'
+      uses: magefile/mage-action@v3
+      with:
+        version: latest
+        args: coverage
+        workdir: ${{ inputs.working-directory }}
+
+    - name: Build backend
+      if: steps.check-for-backend.outputs.has-backend == 'true'
+      uses: magefile/mage-action@v3
+      with:
+        version: latest
+        args: buildAll
+        workdir: ${{ inputs.working-directory }}
+
+    - name: Warn missing Grafana access policy token
+      run: |
+        echo Please generate a Grafana access policy token: https://grafana.com/developers/plugin-tools/publish-a-plugin/sign-a-plugin#generate-an-access-policy-token
+        echo Once done please follow the instructions found here: https://github.com/${{github.repository}}/blob/main/README.md#using-github-actions-release-workflow
+      if: ${{ inputs.policy_token == '' }}
+      shell: bash
+
+    - name: Sign plugin
+      run: ${{ github.action_path }}/pm.sh sign
+      shell: bash
+      env:
+        GRAFANA_ACCESS_POLICY_TOKEN: ${{ inputs.policy_token }}
+        GRAFANA_API_KEY: ${{ inputs.grafana_token }}
+      if: ${{ inputs.policy_token != '' }}
+      working-directory: ${{ inputs.working-directory }}
+
+    - name: Get plugin metadata
+      id: metadata
+      run: |
+        sudo apt-get install jq
+
+        export GRAFANA_PLUGIN_ID=$(cat dist/plugin.json | jq -r .id)
+        export GRAFANA_PLUGIN_VERSION=$(cat dist/plugin.json | jq -r .info.version)
+        export GRAFANA_PLUGIN_TYPE=$(cat dist/plugin.json | jq -r .type)
+        export GRAFANA_PLUGIN_ARTIFACT=${GRAFANA_PLUGIN_ID}-${GRAFANA_PLUGIN_VERSION}.zip
+        export GRAFANA_PLUGIN_ARTIFACT_SHA1SUM=${GRAFANA_PLUGIN_ARTIFACT}.sha1
+
+        echo "plugin-id=${GRAFANA_PLUGIN_ID}" >> $GITHUB_OUTPUT
+        echo "plugin-version=${GRAFANA_PLUGIN_VERSION}" >> $GITHUB_OUTPUT
+        echo "plugin-type=${GRAFANA_PLUGIN_TYPE}" >> $GITHUB_OUTPUT
+        echo "archive=${GRAFANA_PLUGIN_ARTIFACT}" >> $GITHUB_OUTPUT
+        echo "archive-sha1sum=${GRAFANA_PLUGIN_ARTIFACT_SHA1SUM}" >> $GITHUB_OUTPUT
+        echo "archive-url=https://github.com/${{ github.repository }}/releases/download/v${{ steps.metadata.outputs.plugin-version }}/${{ steps.metadata.outputs.archive }}"
+        echo "archive-sha1sum-url=(https://github.com/${{ github.repository }}/releases/download/v${{ steps.metadata.outputs.plugin-version }}/${{ steps.metadata.outputs.archive-sha1sum }}"
+        echo "github-tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+
+    - name: Read changelog
+      id: changelog
+      run: |
+        awk '/^## / {s++} s == 1 {print}' CHANGELOG.md > release_notes.md
+        echo "path=release_notes.md" >> $GITHUB_OUTPUT
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+
+    - name: Check package version
+      run: if [ "v${{ steps.metadata.outputs.plugin-version }}" != "${{ steps.metadata.outputs.github-tag }}" ]; then printf "\033[0;31mPlugin version doesn't match tag name. The tag should be v${{ steps.metadata.outputs.plugin-version }} \033[0m\n"; exit 1; fi
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+
+    - name: Package plugin
+      id: package-plugin
+      run: |
+        mv dist ${{ steps.metadata.outputs.plugin-id }}
+        zip ${{ steps.metadata.outputs.archive }} ${{ steps.metadata.outputs.plugin-id }} -r
+        sha1sum ${{ steps.metadata.outputs.archive }} | cut -f1 -d' ' > ${{ steps.metadata.outputs.archive-sha1sum }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+
+    - name: Validate plugin
+      run: |
+        git clone https://github.com/grafana/plugin-validator
+        pushd ./plugin-validator/pkg/cmd/plugincheck2
+        go install
+        popd
+        plugincheck2 -config ./plugin-validator/config/default.yaml ${{ steps.metadata.outputs.archive }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+
+    - name: Create Github release
+      uses: softprops/action-gh-release@v2
+      with:
+        generate_release_notes: true
+        token: ${{ inputs.token }}
+        files: |
+          ${{ inputs.working-directory }}/${{ steps.metadata.outputs.archive }}
+          ${{ inputs.working-directory }}/${{ steps.metadata.outputs.archive-sha1sum }}
