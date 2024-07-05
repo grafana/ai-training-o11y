@@ -1,12 +1,16 @@
 import React, { useEffect } from 'react';
-import { Tab, TabsBar } from '@grafana/ui';
 import { useParams, useHistory } from 'react-router-dom';
+
+import { GrafanaTheme2 } from '@grafana/data';
 import { PluginPage } from '@grafana/runtime';
-import { prefixRoute } from 'utils/utils.routing';
-import { PageLayoutType } from '@grafana/data';
-import { useTrainingAppStore } from 'utils/state';
+import { Tab, TabsBar, useStyles2 } from '@grafana/ui';
+
+import { css } from '@emotion/css';
+
 import { GraphsTab } from './components/GraphsTab';
-import { TableTab } from './components/TableTab';
+import { ProcessList } from './components/ProcessList';
+import { prefixRoute } from 'utils/utils.routing';
+import { useTrainingAppStore } from 'utils/state';
 import { useGetProcesses } from 'utils/utils.plugin';
 
 export const Home = () => {
@@ -18,16 +22,14 @@ export const Home = () => {
     setProcessesQueryStatus,
     renderedRows,
     setRenderedRows,
-    isSelected,
-    setIsSelected,
     selectedRows,
     addSelectedRow,
     removeSelectedRow,
   } = trainingAppStore;
-
-  const params = useParams<{path: string}>();
+  const styles = useStyles2(getStyles);
+  const params = useParams<{ path: string }>();
   const history = useHistory();
-  
+
   let tabFromUrl = params['path'] as 'table' | 'graphs';
 
   useEffect(() => {
@@ -50,7 +52,7 @@ export const Home = () => {
         setProcessesQueryStatus('success');
       } catch (error: unknown) {
         console.error('Error fetching processes:', error);
-        
+
         if (error && typeof error === 'object') {
           if ('status' in error) {
             // Assuming the error object might have a status property
@@ -80,7 +82,7 @@ export const Home = () => {
         }
       }
     };
-  
+
     fetchProcesses();
   }, [getProcesses, setRenderedRows, setProcessesQueryStatus]);
 
@@ -94,32 +96,61 @@ export const Home = () => {
   };
 
   return (
-    <PluginPage layout={PageLayoutType.Canvas}>
+    <PluginPage
+      renderTitle={() => {
+        return (
+          <div className={styles.pageHeader}>
+            <div className={styles.pageTitle}>AI Training o11y</div>
+          </div>
+        );
+      }}
+    >
       <TabsBar>
-        <Tab 
-          label="Process table" 
-          icon="table"
-          active={tab === 'table'}
-          onChangeTab={handleTabChange('table')}
-        />
-        <Tab 
-          label="Process graphs" 
+        <Tab label="Process list" icon="table" active={tab === 'table'} onChangeTab={handleTabChange('table')} />
+        <Tab
+          label={selectedRows.length > 0 ? `Process graphs (${selectedRows.length})` : `Process graphs`}
           icon="graph-bar"
           active={tab === 'graphs'}
           onChangeTab={handleTabChange('graphs')}
         />
       </TabsBar>
-      {tab === 'table' &&
-        <TableTab
+      {tab === 'table' && (
+        <ProcessList
           rows={renderedRows}
           processQueryStatus={processesQueryStatus}
-          isSelected={isSelected}
-          setIsSelected={setIsSelected}
+          selectedRows={selectedRows}
           addSelectedRow={addSelectedRow}
           removeSelectedRow={removeSelectedRow}
         />
-      }
+      )}
       {tab === 'graphs' && <GraphsTab rows={selectedRows} />}
     </PluginPage>
   );
+};
+
+const getStyles = (theme: GrafanaTheme2) => {
+  return {
+    tabsBar: css`
+      margin-bottom: ${theme.spacing(3)};
+    `,
+    disabledTab: css`
+      cursor: default;
+      pointer-events: none;
+      opacity: 0.2;
+      background-color: red;
+    `,
+    pageHeader: css`
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      height: 32px;
+    `,
+    pageTitle: css`
+      font-family: Inter, Helvetica, Arial, sans-serif;
+      font-size: 28px;
+      font-weight: 500;
+      line-height: 1.2;
+      color: ${theme.colors.text.primary};
+    `,
+  };
 };
