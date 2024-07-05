@@ -28,12 +28,14 @@ const getVizPanel = (data: PanelData, pluginId: string, title: string) => {
     }),
     minHeight: 300,
     maxHeight: 300,
+    minWidth: 0,
   });
 };
 
 export const SceneGraph: React.FC<SceneGraphProps> = ({ panels }) => {
   const scene = new EmbeddedScene({
     body: new SceneFlexLayout({
+      direction: 'row',
       children: panels?.map((p) => getVizPanel(p.data, p.pluginId, p.title)) || [],
     }),
   });
