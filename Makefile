@@ -26,6 +26,7 @@ docker-down:
 # Builds the exporter for whatever your processor architecture is and linux for docker
 .PHONY: jupyter-exporter
 jupyter-exporter:
+	rm -rf o11y/dist
 	@HOST_ARCH=$$(uname -m); \
 	if [ "$$HOST_ARCH" = "x86_64" ]; then \
 		TARGET_ARCH=amd64; \
