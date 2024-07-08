@@ -49,14 +49,6 @@ export const GraphsTab: React.FC<GraphsProps> = ({ rows }) => {
     return (
       <div>
         Running...
-        <button
-          onClick={() => {
-            resetLokiResults();
-            shouldRunQueries.current = true;
-          }}
-        >
-          Reset Results
-        </button>
       </div>
     );
   }
