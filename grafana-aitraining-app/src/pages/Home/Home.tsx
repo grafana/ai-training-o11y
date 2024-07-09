@@ -57,6 +57,7 @@ export const Home = () => {
           if ('status' in error) {
             // Assuming the error object might have a status property
             const status = (error as { status: number }).status;
+            // This block is actually unused right now because getBackendSrv in api.ts does not seem to propagate error codes
             switch (status) {
               case 401:
                 setProcessesQueryStatus('unauthorized');
@@ -64,7 +65,7 @@ export const Home = () => {
               case 404:
                 setProcessesQueryStatus('notFound');
                 break;
-              case 500:
+              case 500 || 502:
                 setProcessesQueryStatus('serverError');
                 break;
               default:

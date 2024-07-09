@@ -1,70 +1,76 @@
-// utils/reshapeModelMetrics.ts
-
+import { DataFrame, FieldType, Field } from '@grafana/data';
+import { config } from '@grafana/runtime';
 interface ReshapedMetrics {
   meta: {
     startTime: string | undefined;
     endTime: string | undefined;
-    keys: string[];
+    sections: {
+      [key: string]: string[];
+    };
   };
   data: {
-    [key: string]: {
-      [key: string]: string[];
+    [section: string]: {
+      [metric: string]: DataFrame;
     };
   };
 }
 
-export function reshapeModelMetrics(queryData: any) {
-  const result: ReshapedMetrics = { meta: { startTime: undefined, endTime: undefined, keys: [] }, data: {} };
+interface TempData {
+  [key: string]: {
+    [processUuid: string]: number[];
+  };
+}
 
-  const processUuids = Object.keys(queryData);
+// This at least looks like Grafana but unsure if the choices of colors are actually good
+function generateColorPalette(count: number): string[] {
+  const colors = config.theme2.visualization.palette;
+  return Array.from({ length: count }, (_, i) => colors[i % colors.length]);
+}
 
-  console.log('[shaping] processUuids', processUuids);
+function populateTempData(queryData: any): {tempData: TempData; meta: ReshapedMetrics['meta']} {
+  const tempData: TempData = {};
+  const meta: ReshapedMetrics['meta'] = { startTime: undefined, endTime: undefined, sections: {} };
 
-  for (let i = 0; i < processUuids.length; i++) {
-    const processUuid = processUuids[i];
+  for (const processUuid of Object.keys(queryData)) {
     const processData = queryData[processUuid];
     const lokiData = processData.lokiData;
 
-    console.log(`[shaping] process: ${processUuid}`, { processData, lokiData });
-
     if (processData.processData) {
-      if (processData.processData.start_time && !result.meta.startTime) {
-        result.meta.startTime = processData.processData.start_time;
+      if (processData.processData.start_time && !meta.startTime) {
+        meta.startTime = processData.processData.start_time;
       }
-      if (processData.processData.end_time && !result.meta.endTime) {
-        result.meta.endTime = processData.processData.end_time;
+      if (processData.processData.end_time && !meta.endTime) {
+        meta.endTime = processData.processData.end_time;
       }
     }
 
     if (lokiData && lokiData.series) {
-      for (let j = 0; j < lokiData.series.length; j++) {
-        const series = lokiData.series[j];
-
-        console.log(`[shaping] series: ${j}`, series);
-
+      for (const series of lokiData.series) {
         if (series.fields) {
-          for (let k = 0; k < series.fields.length; k++) {
-            const field = series.fields[k];
-
-            console.log(`[shaping] field: ${k}`, field);
-
+          for (const field of series.fields) {
             if (field.name === 'Line' && field.values) {
-              for (let l = 0; l < field.values.length; l++) {
-                const logLine = JSON.parse(field.values[l]);
-
-                console.log(`[shaping] logLine: ${l}`, logLine);
+              for (let i = field.values.length - 1; i >= 0; i--) {
+                const logLine = JSON.parse(field.values[i]);
 
                 for (const key in logLine) {
                   if (logLine.hasOwnProperty(key)) {
-                    if (!result.data[key]) {
-                      result.data[key] = {};
+                    const section = key.split('/')[0];
+                    
+                    if (!meta.sections[section]) {
+                      meta.sections[section] = [];
+                    }
+                    if (!meta.sections[section].includes(key)) {
+                      meta.sections[section].push(key);
                     }
 
-                    if (!result.data[key][processUuid]) {
-                      result.data[key][processUuid] = [];
+                    if (!tempData[key]) {
+                      tempData[key] = {};
+                    }
+                    if (!tempData[key][processUuid]) {
+                      tempData[key][processUuid] = [];
                     }
 
-                    result.data[key][processUuid].push(logLine[key]);
+                    tempData[key][processUuid].push(parseFloat(logLine[key]));
                   }
                 }
               }
@@ -75,9 +81,63 @@ export function reshapeModelMetrics(queryData: any) {
     }
   }
 
-  console.log('[shaping] result', result);
+  return { tempData, meta };
+}
 
-  result.meta.keys = Object.keys(result.data);
+export function reshapeModelMetrics(queryData: any): ReshapedMetrics {
+  const processUuids = Object.keys(queryData);
+  const colorPalette = generateColorPalette(processUuids.length);
+  const colorMap: { [key: string]: string } = {};
+  processUuids.forEach((uuid, index) => {
+    colorMap[uuid] = colorPalette[index];
+  });
+
+  const { tempData, meta } = populateTempData(queryData);
+
+  const result: ReshapedMetrics = {
+    meta,
+    data: {},
+  };
+
+  // Convert tempData to DataFrames
+  for (const section in result.meta.sections) {
+    result.data[section] = {};
+    for (const key of result.meta.sections[section]) {
+      const fields: Field<number, number[]>[] = [
+        {
+          name: 'x',
+          type: FieldType.number,
+          values: [],
+          config: {},
+        }
+      ];
+      const maxLength = Math.max(...Object.values(tempData[key]).map(arr => arr.length));
+      
+      for (const processUuid in tempData[key]) {
+        fields.push({
+          name: processUuid,
+          type: FieldType.number,
+          values: tempData[key][processUuid],
+          config: {
+            color: {
+              mode: 'fixed',
+              fixedColor: colorMap[processUuid],
+            },
+          },
+        });
+      }
+
+      for (let i = 0; i < maxLength; i++) {
+        fields[0].values.push(i);
+      }
+
+      result.data[section][key] = {
+        fields,
+        length: maxLength,
+        refId: key,
+      };
+    }
+  }
 
   return result;
 }
