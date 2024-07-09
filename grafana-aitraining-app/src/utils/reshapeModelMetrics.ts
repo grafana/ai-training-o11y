@@ -1,31 +1,38 @@
-// utils/reshapeModelMetrics.ts
+import { MutableDataFrame, FieldType } from '@grafana/data';
 
 interface ReshapedMetrics {
   meta: {
     startTime: string | undefined;
     endTime: string | undefined;
-    keys: string[];
+    sections: {
+      [key: string]: string[];
+    };
   };
   data: {
-    [key: string]: {
-      [key: string]: string[];
+    [section: string]: {
+      [metric: string]: MutableDataFrame;
     };
   };
 }
 
-export function reshapeModelMetrics(queryData: any) {
-  const result: ReshapedMetrics = { meta: { startTime: undefined, endTime: undefined, keys: [] }, data: {} };
+interface TempData {
+  [key: string]: {
+    [processUuid: string]: number[];
+  };
+}
+
+export function reshapeModelMetrics(queryData: any): ReshapedMetrics {
+  const result: ReshapedMetrics = {
+    meta: { startTime: undefined, endTime: undefined, sections: {} },
+    data: {},
+  };
 
   const processUuids = Object.keys(queryData);
+  const tempData: TempData = {};
 
-  console.log('[shaping] processUuids', processUuids);
-
-  for (let i = 0; i < processUuids.length; i++) {
-    const processUuid = processUuids[i];
+  for (const processUuid of processUuids) {
     const processData = queryData[processUuid];
     const lokiData = processData.lokiData;
-
-    console.log(`[shaping] process: ${processUuid}`, { processData, lokiData });
 
     if (processData.processData) {
       if (processData.processData.start_time && !result.meta.startTime) {
@@ -37,47 +44,34 @@ export function reshapeModelMetrics(queryData: any) {
     }
 
     if (lokiData && lokiData.series) {
-      for (let j = 0; j < lokiData.series.length; j++) {
-        const series = lokiData.series[j];
-
-        console.log(`[shaping] series: ${j}`, series);
-
+      for (const series of lokiData.series) {
         if (series.fields) {
-          for (let k = 0; k < series.fields.length; k++) {
-            const field = series.fields[k];
-
-            console.log(`[shaping] field: ${k}`, field);
-
+          for (const field of series.fields) {
             if (field.name === 'Line' && field.values) {
-              const tempData: { [key: string]: string[] } = {};
-
-              for (let l = field.values.length - 1; l >= 0; l--) {
-                const logLine = JSON.parse(field.values[l]);
-
-                console.log(`[shaping] logLine: ${l}`, logLine);
+              for (let i = field.values.length - 1; i >= 0; i--) {
+                const logLine = JSON.parse(field.values[i]);
 
                 for (const key in logLine) {
                   if (logLine.hasOwnProperty(key)) {
-                    if (!tempData[key]) {
-                      tempData[key] = [];
+                    const section = key.split('/')[0];
+                    
+                    if (!result.meta.sections[section]) {
+                      result.meta.sections[section] = [];
+                    }
+                    if (!result.meta.sections[section].includes(key)) {
+                      result.meta.sections[section].push(key);
                     }
 
-                    tempData[key].push(logLine[key]);
+                    if (!tempData[key]) {
+                      tempData[key] = {};
+                    }
+                    if (!tempData[key][processUuid]) {
+                      tempData[key][processUuid] = [];
+                    }
+
+                    tempData[key][processUuid].push(parseFloat(logLine[key]));
                   }
                 }
-              }
-
-              // After processing all log lines, add the reversed data to the result
-              for (const key in tempData) {
-                if (!result.data[key]) {
-                  result.data[key] = {};
-                }
-
-                if (!result.data[key][processUuid]) {
-                  result.data[key][processUuid] = [];
-                }
-
-                result.data[key][processUuid] = tempData[key];
               }
             }
           }
@@ -86,9 +80,32 @@ export function reshapeModelMetrics(queryData: any) {
     }
   }
 
-  console.log('[shaping] result', result);
+  // Convert tempData to MutableDataFrames
+  for (const section in result.meta.sections) {
+    result.data[section] = {};
+    for (const key of result.meta.sections[section]) {
+      // This next is an eslint error.
+      // eslint-disable-next-line @typescript-eslint/array-type
+      const fields: Array<{name: string; type: FieldType; values: number[]}> = [
+        { name: 'x', type: FieldType.number, values: [] }
+      ];
+      const maxLength = Math.max(...Object.values(tempData[key]).map(arr => arr.length));
+      
+      for (const processUuid in tempData[key]) {
+        fields.push({
+          name: processUuid,
+          type: FieldType.number,
+          values: tempData[key][processUuid],
+        });
+      }
 
-  result.meta.keys = Object.keys(result.data);
+      for (let i = 0; i < maxLength; i++) {
+        fields[0].values.push(i);
+      }
+
+      result.data[section][key] = new MutableDataFrame({ fields });
+    }
+  }
 
   return result;
 }

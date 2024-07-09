@@ -1,17 +1,17 @@
 import React, { useEffect, useRef } from 'react';
-
 import { useProcessQueries } from 'hooks/useProcessQueries';
 import { useTrainingAppStore, RowData } from 'utils/state';
 import { reshapeModelMetrics } from 'utils/reshapeModelMetrics';
 import { SceneGraph } from './SceneGraph';
-
-import { PanelData, LoadingState, dateTime, TimeRange, FieldType } from '@grafana/data';
+import { PanelData, LoadingState, dateTime, TimeRange } from '@grafana/data';
+import { ControlledCollapse } from '@grafana/ui';
 
 export interface MetricPanel {
   pluginId: string;
   title: string;
   data: PanelData;
 }
+
 interface GraphsProps {
   rows: RowData[];
 }
@@ -61,12 +61,12 @@ export const GraphsTab: React.FC<GraphsProps> = ({ rows }) => {
     );
   }
 
-  if (Object.keys(organizedLokiData).length === 0) {
-    return <div>No data</div>;
+  if (!organizedLokiData || !organizedLokiData.data || Object.keys(organizedLokiData.data).length === 0) {
+    return <div>No data available</div>;
   }
 
-  const startTime = dateTime(organizedLokiData.startTime);
-  const endTime = dateTime(organizedLokiData.endTime);
+  const startTime = organizedLokiData.meta.startTime ? dateTime(organizedLokiData.meta.startTime) : dateTime();
+  const endTime = organizedLokiData.meta.endTime ? dateTime(organizedLokiData.meta.endTime) : dateTime();
 
   const tmpTimeRange: TimeRange = {
     from: startTime,
@@ -77,53 +77,48 @@ export const GraphsTab: React.FC<GraphsProps> = ({ rows }) => {
     },
   };
 
-  const panelList: MetricPanel[] = organizedLokiData.meta.keys.map((key: string) => {
-    const trendLine = Object.keys(organizedLokiData.data[key]).map((processId: any) => {
-      const line = organizedLokiData.data[key][processId];
-      return line.map((m: any, i: number) => i);
-    })[0];
-
-    const panel: PanelData = {
-      state: LoadingState.Done,
-      timeRange: tmpTimeRange,
-      series: [
-        {
-          name: key,
-          fields: [
-            {
-              name: 'Line',
-              type: FieldType.number,
-              values: trendLine,
-              config: {},
-            },
-            ...Object.keys(organizedLokiData.data[key]).map((processId: any) => {
-              const line = organizedLokiData.data[key][processId];
-              return {
-                name: 'Line',
-                type: FieldType.number,
-                values: [...line],
-                config: {},
-              };
-            }),
-          ],
-          length: organizedLokiData.data[key].length,
-        },
-      ],
-    };
-    return {
-      pluginId: 'trend',
-      title: key,
-      data: panel,
-    };
-  });
+  const createPanelList = (section: string): MetricPanel[] => {
+    if (!organizedLokiData.meta.sections[section]) {
+      return [];
+    }
+    return organizedLokiData.meta.sections[section].map((key: string) => {
+      if (!organizedLokiData.data[section] || !organizedLokiData.data[section][key]) {
+        return {
+          pluginId: 'xyplot',
+          title: key,
+          data: {
+            state: LoadingState.Error,
+            series: [],
+            timeRange: tmpTimeRange,
+          },
+        };
+      }
+      const panel: PanelData = {
+        state: LoadingState.Done,
+        timeRange: tmpTimeRange,
+        series: [organizedLokiData.data[section][key]],
+      };
+      return {
+        pluginId: 'trend',
+        title: key,
+        data: panel,
+      };
+    });
+  };
 
   return (
     <div style={{ marginTop: '10px' }}>
-      <div>
-        <SceneGraph panels={panelList} />
-      </div>
+      {organizedLokiData.meta.sections && Object.entries(organizedLokiData.meta.sections).map(([section, keys]) => (
+        <ControlledCollapse
+          key={section}
+          isOpen={true}
+          label={`${section}`}
+        >
+          <SceneGraph panels={createPanelList(section)} />
+        </ControlledCollapse>
+      ))}
 
-      {/* remove this later, keeping here for debugging for now */}
+      {/* Debug section (hidden) */}
       <div style={{ display: 'none' }}>
         <button
           onClick={() => {
