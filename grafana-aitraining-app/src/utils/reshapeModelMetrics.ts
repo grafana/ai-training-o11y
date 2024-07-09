@@ -1,4 +1,4 @@
-import { MutableDataFrame, FieldType } from '@grafana/data';
+import { DataFrame, FieldType, Field } from '@grafana/data';
 
 interface ReshapedMetrics {
   meta: {
@@ -10,7 +10,7 @@ interface ReshapedMetrics {
   };
   data: {
     [section: string]: {
-      [metric: string]: MutableDataFrame;
+      [metric: string]: DataFrame;
     };
   };
 }
@@ -80,14 +80,17 @@ export function reshapeModelMetrics(queryData: any): ReshapedMetrics {
     }
   }
 
-  // Convert tempData to MutableDataFrames
+  // Convert tempData to DataFrames
   for (const section in result.meta.sections) {
     result.data[section] = {};
     for (const key of result.meta.sections[section]) {
-      // This next is an eslint error.
-      // eslint-disable-next-line @typescript-eslint/array-type
-      const fields: Array<{name: string; type: FieldType; values: number[]}> = [
-        { name: 'x', type: FieldType.number, values: [] }
+      const fields: Field<number, number[]>[] = [
+        {
+          name: 'x',
+          type: FieldType.number,
+          values: [],
+          config: {},
+        }
       ];
       const maxLength = Math.max(...Object.values(tempData[key]).map(arr => arr.length));
       
@@ -96,6 +99,7 @@ export function reshapeModelMetrics(queryData: any): ReshapedMetrics {
           name: processUuid,
           type: FieldType.number,
           values: tempData[key][processUuid],
+          config: {},
         });
       }
 
@@ -103,7 +107,11 @@ export function reshapeModelMetrics(queryData: any): ReshapedMetrics {
         fields[0].values.push(i);
       }
 
-      result.data[section][key] = new MutableDataFrame({ fields });
+      result.data[section][key] = {
+        fields,
+        length: maxLength,
+        refId: key,
+      };
     }
   }
 
