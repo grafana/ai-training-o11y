@@ -24,8 +24,18 @@ export const ProcessList: React.FC<ProcessListProps> = ({
   const [page, setPage] = useQueryParam('page', NumberParam);
   const [pageSize, setPageSize] = useQueryParam('pageSize', NumberParam);
 
+  // Unauthorized, notFound and serverError unused due to odd behavior in api.ts.
+  // Left for future resolution
   if (processQueryStatus === 'loading') {
     return <div>Loading...</div>;
+  } else if (processQueryStatus === 'unauthorized') {
+    return <div>Unauthorized. Please log in.</div>;
+  } else if (processQueryStatus === 'notFound') {
+    return <div>Resource not found.</div>;
+  } else if (processQueryStatus === 'serverError') {
+    return <div>Server error. Please try again later.</div>;
+  } else if (processQueryStatus === 'error') {
+    return <div>A server error occurred. Please try again.</div>;
   }
 
   const totalItems = rows?.length ?? 0;
