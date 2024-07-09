@@ -1,8 +1,16 @@
 name: Release
+
 on:
-  push:
-    tags:
-      - "v*" # Run workflow on version tags, e.g. v1.0.0.
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish plugin'
+        required: true
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 permissions:
   contents: write
@@ -13,6 +21,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Build Plugin
         id: build_plugin
         uses: ./.github/workflows/build-plugin
@@ -20,14 +29,12 @@ jobs:
           policy-token: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
           working-directory: grafana-aitraining-app
 
-      - name: Get version from tag
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
+        # This one is untested because the plugin is still way too alpha to publish.
       - name: Publish new plugin version on grafana.com
+        if: inputs.publish == true
         env:
           GCOM_TOKEN: ${{ secrets.GRAFANA_ACCESS_POLICY_TOKEN }}
-          VERSION: ${{ steps.get_version.outputs.VERSION }}
+          VERSION: ${{ steps.build_plugin.outputs.version }}
           ARCHIVE_URL: ${{ steps.build_plugin.outputs.archive-url }}
           ARCHIVE_SHA1SUM_URL: ${{ steps.build_plugin.outputs.archive-sha1sum-url }}
         run: |

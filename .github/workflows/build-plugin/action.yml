@@ -2,6 +2,9 @@ name: "Grafana Build Plugin"
 description: "Builds a Grafana plugin"
 
 outputs:
+  version:
+    description: "The version of the plugin."
+    value: ${{ steps.metadata.outputs.plugin-version }}
   archive:
     description: "The path to the plugin archive (zip)."
     value: ${{ steps.metadata.outputs.archive }}
@@ -123,7 +126,6 @@ runs:
         echo "archive-sha1sum=${GRAFANA_PLUGIN_ARTIFACT_SHA1SUM}" >> $GITHUB_OUTPUT
         echo "archive-url=https://github.com/${{ github.repository }}/releases/download/v${{ steps.metadata.outputs.plugin-version }}/${{ steps.metadata.outputs.archive }}"
         echo "archive-sha1sum-url=(https://github.com/${{ github.repository }}/releases/download/v${{ steps.metadata.outputs.plugin-version }}/${{ steps.metadata.outputs.archive-sha1sum }}"
-        echo "github-tag=${GITHUB_REF#refs/*/}" >> $GITHUB_OUTPUT
       shell: bash
       working-directory: ${{ inputs.working-directory }}
 
@@ -132,11 +134,6 @@ runs:
       run: |
         awk '/^## / {s++} s == 1 {print}' CHANGELOG.md > release_notes.md
         echo "path=release_notes.md" >> $GITHUB_OUTPUT
-      shell: bash
-      working-directory: ${{ inputs.working-directory }}
-
-    - name: Check package version
-      run: if [ "v${{ steps.metadata.outputs.plugin-version }}" != "${{ steps.metadata.outputs.github-tag }}" ]; then printf "\033[0;31mPlugin version doesn't match tag name. The tag should be v${{ steps.metadata.outputs.plugin-version }} \033[0m\n"; exit 1; fi
       shell: bash
       working-directory: ${{ inputs.working-directory }}
 
