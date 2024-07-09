@@ -43,7 +43,6 @@ describe('reshapeModelMetrics', () => {
 
     const reshapedData = reshapeModelMetrics(queryData);
 
-    // Convert MutableDataFrames to plain objects for comparison
     const serializedData = JSON.parse(JSON.stringify(reshapedData, (key, value) => {
       if (key === 'values' && Array.isArray(value)) {
         return Array.from(value);
@@ -75,6 +74,8 @@ describe('reshapeModelMetrics', () => {
               createField('49ea35fa-e1f2-4c24-9b12-c8259b4a4446', 'number', [0.3, 0.5]),
               createField('8c0254a6-363b-456b-be1f-e9ff5e8904d6', 'number', [0.4, 0.6]),
             ],
+            length: 2,
+            refId: 'train/loss',
           },
           'train/acc': {
             fields: [
@@ -82,6 +83,8 @@ describe('reshapeModelMetrics', () => {
               createField('49ea35fa-e1f2-4c24-9b12-c8259b4a4446', 'number', [0.9, 0.8]),
               createField('8c0254a6-363b-456b-be1f-e9ff5e8904d6', 'number', [0.85, 0.75]),
             ],
+            length: 2,
+            refId: 'train/acc',
           },
         },
         test: {
@@ -91,6 +94,8 @@ describe('reshapeModelMetrics', () => {
               createField('49ea35fa-e1f2-4c24-9b12-c8259b4a4446', 'number', [0.4, 0.6]),
               createField('8c0254a6-363b-456b-be1f-e9ff5e8904d6', 'number', [0.5, 0.7]),
             ],
+            length: 2,
+            refId: 'test/loss',
           },
           'test/acc': {
             fields: [
@@ -98,6 +103,8 @@ describe('reshapeModelMetrics', () => {
               createField('49ea35fa-e1f2-4c24-9b12-c8259b4a4446', 'number', [0.85, 0.75]),
               createField('8c0254a6-363b-456b-be1f-e9ff5e8904d6', 'number', [0.8, 0.7]),
             ],
+            length: 2,
+            refId: 'test/acc',
           },
         },
       },
