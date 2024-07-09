@@ -3,7 +3,7 @@
 import { reshapeModelMetrics } from './reshapeModelMetrics';
 
 describe('reshapeModelMetrics', () => {
-  it('should reshape model metrics correctly', () => {
+  it('should reshape and reverse model metrics correctly', () => {
     const queryData = {
       '49ea35fa-e1f2-4c24-9b12-c8259b4a4446': {
         processData: {},
@@ -44,13 +44,20 @@ describe('reshapeModelMetrics', () => {
     };
 
     const expectedOutput = {
-      accuracy: {
-        '49ea35fa-e1f2-4c24-9b12-c8259b4a4446': [0.9338064689165435, 0.8730602238410783],
-        '8c0254a6-363b-456b-be1f-e9ff5e8904d6': [0.7926974470414183, 0.8171786292906561],
+      meta: {
+        startTime: undefined,
+        endTime: undefined,
+        keys: ['accuracy', 'loss'],
       },
-      loss: {
-        '49ea35fa-e1f2-4c24-9b12-c8259b4a4446': [0.1308622321689051, 0.15714042533691971],
-        '8c0254a6-363b-456b-be1f-e9ff5e8904d6': [0.1273479979712903, 0.22870355269154058],
+      data: {
+        accuracy: {
+          '49ea35fa-e1f2-4c24-9b12-c8259b4a4446': [0.8730602238410783, 0.9338064689165435],
+          '8c0254a6-363b-456b-be1f-e9ff5e8904d6': [0.8171786292906561, 0.7926974470414183],
+        },
+        loss: {
+          '49ea35fa-e1f2-4c24-9b12-c8259b4a4446': [0.15714042533691971, 0.1308622321689051],
+          '8c0254a6-363b-456b-be1f-e9ff5e8904d6': [0.22870355269154058, 0.1273479979712903],
+        },
       },
     };
 
@@ -76,7 +83,14 @@ describe('reshapeModelMetrics', () => {
       },
     };
 
-    const expectedOutput = {};
+    const expectedOutput = {
+      meta: {
+        startTime: undefined,
+        endTime: undefined,
+        keys: [],
+      },
+      data: {},
+    };
 
     const reshapedData = reshapeModelMetrics(queryData);
     expect(reshapedData).toEqual(expectedOutput);

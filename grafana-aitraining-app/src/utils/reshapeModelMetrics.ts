@@ -49,24 +49,35 @@ export function reshapeModelMetrics(queryData: any) {
             console.log(`[shaping] field: ${k}`, field);
 
             if (field.name === 'Line' && field.values) {
-              for (let l = 0; l < field.values.length; l++) {
+              const tempData: { [key: string]: string[] } = {};
+
+              for (let l = field.values.length - 1; l >= 0; l--) {
                 const logLine = JSON.parse(field.values[l]);
 
                 console.log(`[shaping] logLine: ${l}`, logLine);
 
                 for (const key in logLine) {
                   if (logLine.hasOwnProperty(key)) {
-                    if (!result.data[key]) {
-                      result.data[key] = {};
+                    if (!tempData[key]) {
+                      tempData[key] = [];
                     }
 
-                    if (!result.data[key][processUuid]) {
-                      result.data[key][processUuid] = [];
-                    }
-
-                    result.data[key][processUuid].push(logLine[key]);
+                    tempData[key].push(logLine[key]);
                   }
                 }
+              }
+
+              // After processing all log lines, add the reversed data to the result
+              for (const key in tempData) {
+                if (!result.data[key]) {
+                  result.data[key] = {};
+                }
+
+                if (!result.data[key][processUuid]) {
+                  result.data[key][processUuid] = [];
+                }
+
+                result.data[key][processUuid] = tempData[key];
               }
             }
           }
