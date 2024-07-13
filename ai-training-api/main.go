@@ -63,10 +63,10 @@ func run() int {
 			"loki-address",
 			"Loki address to send logs to.",
 		).Default("http://loki:3100/loki/api/v1/push").String()
-		// tenantOverridesFile = kingpin.Flag(
-		// 	"tenant-overrides-file",
-		// 	"Path to YAML file containing overrides per tenant.",
-		// ).ExistingFile()
+		lokiTenantID = kingpin.Flag(
+			"loki-tenant-id",
+			"Loki tenant ID to send logs to.",
+		).Default("").String()
 	)
 
 	// Allow configuration to be specified via environment variables.
@@ -78,7 +78,15 @@ func run() int {
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 
-	a, err := app.New(*listenAddress, *listenPort, *databaseAddress, *databaseType, *constTenant, *lokiAddress, promlogConfig)
+	a, err := app.New(
+		*listenAddress,
+		*listenPort,
+		*databaseAddress,
+		*databaseType,
+		*constTenant,
+		*lokiAddress,
+		*lokiTenantID,
+		promlogConfig)
 	if err != nil {
 		return 1
 	}
