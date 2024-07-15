@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"sync"
 
 	"github.com/go-kit/log"
@@ -33,6 +34,7 @@ type App struct {
 
 	// Loki address to proxy logs.
 	lokiAddress string
+	lokiTenant  string
 
 	logger log.Logger
 }
@@ -44,6 +46,7 @@ func New(
 	databaseType string,
 	constTenant string,
 	lokiAddress string,
+	lokiTenant string,
 	promlogConfig *promlog.Config) (*App, error) {
 	// Initialize observability constructs.
 	logger := promlog.New(promlogConfig)
@@ -120,6 +123,11 @@ func New(
 	// Register the admin routes.
 	adm := NewAdmin(a)
 	adm.Register(a.server.HTTP.PathPrefix("/admin").Subrouter())
+
+	// Register kubernetes readiness probe.
+	a.server.HTTP.HandleFunc("/ready", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
 
 	// Start the server.
 	level.Info(logger).Log("msg", "starting server")

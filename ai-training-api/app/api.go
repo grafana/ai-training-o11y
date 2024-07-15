@@ -50,7 +50,7 @@ func (a *App) registerNewProcess(tenantID string, req *http.Request) (interface{
 	process.ID = uuid.New()
 	process.TenantID = tenantID
 	process.StartTime = time.Now()
-	process.Status = "running"  // Set default status to "running"
+	process.Status = "running" // Set default status to "running"
 
 	// Store process in DB.
 	err := a.db(req.Context()).Model(&model.Process{}).Create(process).Error
@@ -424,6 +424,9 @@ func (a *App) addModelMetrics(tenantID string, req *http.Request) (interface{}, 
 		return nil, middleware.ErrBadRequest(err)
 	}
 	lokiReq.Header.Set("Content-Type", "application/json")
+	if a.lokiTenant != "" {
+		lokiReq.Header.Set("X-Scope-OrgID", a.lokiTenant)
+	}
 	lokiResp, err := httpClient.Do(lokiReq)
 	if err != nil {
 		return nil, middleware.ErrBadRequest(err)
