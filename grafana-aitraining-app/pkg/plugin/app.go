@@ -39,17 +39,18 @@ func NewApp(_ context.Context, appSettings backend.AppInstanceSettings) (instanc
         return nil, err
     }
 
-    value, ok := settings["metadataUrl"]
-    if !ok {
-        return nil, errors.New("metadataUrl not found in settings")
-    }
-
-    switch url := value.(type) {
-    case string:
-        app.metadataUrl = url
-    default:
-        return nil, errors.New("metadataUrl is not a string")
-    }
+	// Check if metadataUrl exists in settings
+	if value, ok := settings["metadataUrl"]; ok {
+		switch url := value.(type) {
+		case string:
+			app.metadataUrl = url
+		default:
+			return nil, errors.New("metadataUrl is not a string")
+		}
+	} else {
+		// If metadataUrl is not found, set it to an empty string or a default value
+		app.metadataUrl = "" 
+	}
 
 	// Use a httpadapter (provided by the SDK) for resource calls. This allows us
 	// to use a *http.ServeMux for resource calls, so we can map multiple routes
