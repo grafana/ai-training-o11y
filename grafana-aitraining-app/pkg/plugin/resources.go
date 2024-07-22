@@ -49,7 +49,7 @@ func (a *App) handleEcho(w http.ResponseWriter, req *http.Request) {
 	log.DefaultLogger.Debug("Echo request handled successfully", "message", body.Message)
 }
 
-func metadataHandler(target string) func(http.ResponseWriter, *http.Request) {
+func (a *App) metadataHandler(target string) func(http.ResponseWriter, *http.Request) {
 	log.DefaultLogger.Info("Creating metadata handler", "target", target)
 	remote, err := url.Parse(target)
 	if err != nil {
@@ -57,13 +57,36 @@ func metadataHandler(target string) func(http.ResponseWriter, *http.Request) {
 	}
 	p := httputil.NewSingleHostReverseProxy(remote)
 
+	// Modify the director to add the bearer token and X-Forwarded-Host
+	originalDirector := p.Director
+	p.Director = func(req *http.Request) {
+		originalDirector(req)
+		
+		// Set X-Forwarded-Host
+		if req.Host != "" {
+			req.Header.Set("X-Forwarded-Host", req.Host)
+		}
+		
+		// Set Authorization header if token is available
+		if a.metadataToken != "" {
+			req.Header.Set("Authorization", "Bearer "+a.metadataToken)
+			log.DefaultLogger.Debug("Added bearer token to request")
+		} else {
+			log.DefaultLogger.Debug("No metadata token set, not adding to request")
+		}
+
+		// Remove the "/metadata" prefix from the path
+		req.URL.Path = req.URL.Path[len("/metadata"):]
+		
+		log.DefaultLogger.Debug("Proxying metadata request", 
+			"method", req.Method, 
+			"url", req.URL.String(), 
+			"host", req.Host,
+			"x-forwarded-host", req.Header.Get("X-Forwarded-Host"))
+	}
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.DefaultLogger.Debug("Handling metadata request", "method", r.Method, "url", r.URL.String())
-		originalPath := r.URL.Path
-		// Remove the string "/metadata" from the request URL
-		r.URL.Path = r.URL.Path[len("/metadata"):]
-		r.Header.Set("X-Forwarded-Host", r.Header.Get("Host"))
-		log.DefaultLogger.Debug("Proxying metadata request", "originalPath", originalPath, "newPath", r.URL.Path)
 		p.ServeHTTP(w, r)
 	}
 }
@@ -73,6 +96,6 @@ func (a *App) registerRoutes(mux *http.ServeMux) {
 	log.DefaultLogger.Info("Registering routes")
 	mux.HandleFunc("/ping", a.handlePing)
 	mux.HandleFunc("/echo", a.handleEcho)
-	mux.HandleFunc("/metadata/", metadataHandler(a.metadataUrl)) // Use config for this
+	mux.HandleFunc("/metadata/", a.metadataHandler(a.metadataUrl)) // Use config for this
 	log.DefaultLogger.Info("Routes registered successfully")
 }
