@@ -24,3 +24,7 @@ Builds dev environment with "make docker"
 Once it's up, you can background it or open another terminal and use "make jupyter" to open a jupyter server. It will have a link to jupyter in your terminal.
 
 Grafana will be hosted at localhost:3000 with the plugin.
+
+## Licensing
+
+ai-training-api and grafana-aitraining-app are licensed AGPL v3, o11y (the python exporter) is Apache
