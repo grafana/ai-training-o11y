@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	metricsNamespace = "ai_o11y_training_api"
+	metricsNamespace = "ai_training_api"
 )
 
 // App is the main application struct.
@@ -62,25 +62,27 @@ func New(
 		return nil, fmt.Errorf("error connecting to database: %w", err)
 	}
 
+	level.Info(logger).Log("msg", "connected to database", "database_address", databaseAddress, "database_type", databaseType, "database_name", db.Name())
+
 	// Migrate the database.
 	err = db.AutoMigrate(&model.Process{})
 	if err != nil {
 		return nil, fmt.Errorf("error migrating Process table: %w", err)
 	}
-	level.Debug(logger).Log("msg", "checking tables", "process_table_exists", db.Migrator().HasTable(&model.Process{}))
+	level.Info(logger).Log("msg", "checking tables", "process_table_exists", db.Migrator().HasTable(&model.Process{}))
 	err = db.AutoMigrate(&model.Group{})
 	if err != nil {
 		return nil, fmt.Errorf("error migrating Group table: %w", err)
 	}
-	level.Debug(logger).Log("msg", "checking tables", "group_table_exists", db.Migrator().HasTable(&model.Group{}))
+	level.Info(logger).Log("msg", "checking tables", "group_table_exists", db.Migrator().HasTable(&model.Group{}))
 	err = db.AutoMigrate(&model.MetadataKV{})
 	if err != nil {
 		return nil, fmt.Errorf("error migrating MetadataKV table: %w", err)
 	}
-	level.Debug(logger).Log("msg", "checking tables", "metadata_kv_table_exists", db.Migrator().HasTable(&model.MetadataKV{}))
+	level.Info(logger).Log("msg", "checking tables", "metadata_kv_table_exists", db.Migrator().HasTable(&model.MetadataKV{}))
 
 	// Create server and router.
-	serverLogLevel := dskit_log.Level{}
+	serverLogLevel := &dskit_log.Level{}
 	serverLogLevel.Set(promlogConfig.Level.String())
 	// Create a prometheus registry to avoid "duplicate metrics collector registration attempted"
 	// errors when running tests.
@@ -90,7 +92,11 @@ func New(
 		MetricsNamespace:  metricsNamespace,
 		HTTPListenAddress: listenAddress,
 		HTTPListenPort:    listenPort,
-		LogLevel:          serverLogLevel,
+		LogLevel:          *serverLogLevel,
+		// We get a lot of server side instrumentation for "free" using dskit's middleware
+		// for logs and metrics.
+		RegisterInstrumentation: true,
+		LogRequestAtInfoLevel:   true,
 	})
 	if err != nil {
 		level.Error(logger).Log("msg", "error creating server", "err", err)
@@ -129,7 +135,6 @@ func New(
 		w.WriteHeader(http.StatusOK)
 	})
 
-	// Start the server.
 	level.Info(logger).Log("msg", "starting server")
 
 	return a, nil
@@ -148,7 +153,9 @@ func (a *App) Run() error {
 	if err != nil {
 		level.Error(a.logger).Log("msg", "error running server", "err", err)
 	}
-	return err
+
+	level.Info(a.logger).Log("msg", "server started", "address", a.server.HTTPListenAddr())
+	return nil
 }
 
 func (a *App) Shutdown() {
