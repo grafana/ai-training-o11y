@@ -1,0 +1,88 @@
+name: Run Tests on PR
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test-plugin:
+    runs-on: ubuntu-latest
+    env:
+        working-directory: './grafana-aitraining-app'
+        node-version: '20'
+        go-version: '1.22'
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.node-version }}
+
+    - name: Setup Go environment
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.go-version }}
+        cache-dependency-path: "**/*.sum"
+
+    - name: Install dependencies
+      run: |
+        corepack enable
+        yarn install
+      shell: bash
+      working-directory: ${{ env.working-directory }}
+
+    - name: Build and test frontend
+      run: yarn test:ci
+      shell: bash
+      working-directory: ${{ env.working-directory }}
+
+    - name: Check for backend
+      id: check-for-backend
+      run: |
+        if [ -f "Magefile.go" ]
+        then
+          echo "has-backend=true" >> $GITHUB_OUTPUT
+        fi
+      shell: bash
+      working-directory: ${{ env.working-directory }}
+
+    - name: Test backend
+      if: steps.check-for-backend.outputs.has-backend == 'true'
+      uses: magefile/mage-action@v3
+      with:
+        version: latest
+        args: coverage
+        workdir: ${{ env.working-directory }}
+
+  test-api:
+    runs-on: ubuntu-latest
+    env:
+        working-directory: './ai-training-api'
+        node-version: '20'
+        go-version: '1.22'
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Setup Go environment
+      uses: actions/setup-go@v5
+      with:
+        go-version: ${{ env.go-version }}
+        cache-dependency-path: "**/*.sum"
+
+    - name: Run Go tests
+      run: go test ./... -race -count=1 -v
+      shell: bash
+      working-directory: ${{ env.working-directory }}
+
+  # You can add more jobs here for other projects if needed
+  # For example:
+  # test-project2:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     # ... steps for project2
+
+  # test-project3:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     # ... steps for project3
