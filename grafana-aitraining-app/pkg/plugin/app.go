@@ -3,11 +3,11 @@ package plugin
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
+	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/resource/httpadapter"
 )
 
@@ -31,11 +31,13 @@ type App struct {
 
 // NewApp creates a new example *App instance.
 func NewApp(_ context.Context, appSettings backend.AppInstanceSettings) (instancemgmt.Instance, error) {
+	log.DefaultLogger.Info("Creating new App instance")
 	var app App
 
 	var settings map[string]interface{}
     err := json.Unmarshal(appSettings.JSONData, &settings)
     if err != nil {
+        log.DefaultLogger.Error("Failed to unmarshal app settings", "error", err)
         return nil, err
     }
 
@@ -44,12 +46,15 @@ func NewApp(_ context.Context, appSettings backend.AppInstanceSettings) (instanc
 		switch url := value.(type) {
 		case string:
 			app.metadataUrl = url
+			log.DefaultLogger.Info("Metadata URL set", "url", app.metadataUrl)
 		default:
-			return nil, errors.New("metadataUrl is not a string")
+			app.metadataUrl = "" 
+			log.DefaultLogger.Warn("Metadata URL in settings but is not a string, using empty string")
 		}
 	} else {
 		// If metadataUrl is not found, set it to an empty string or a default value
 		app.metadataUrl = "" 
+		log.DefaultLogger.Warn("Metadata URL not found in settings, using empty string")
 	}
 
 	// Use a httpadapter (provided by the SDK) for resource calls. This allows us
@@ -59,19 +64,24 @@ func NewApp(_ context.Context, appSettings backend.AppInstanceSettings) (instanc
 	app.registerRoutes(mux)
 	app.CallResourceHandler = httpadapter.New(mux)
 
+	log.DefaultLogger.Info("App instance created successfully")
 	return &app, nil
 }
 
 // Dispose here tells plugin SDK that plugin wants to clean up resources when a new instance
 // created.
 func (a *App) Dispose() {
+	log.DefaultLogger.Info("Disposing App instance")
 	// cleanup
 }
 
 // CheckHealth handles health checks sent from Grafana to the plugin.
 func (a *App) CheckHealth(_ context.Context, _ *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
-	return &backend.CheckHealthResult{
+	log.DefaultLogger.Info("Performing health check")
+	result := &backend.CheckHealthResult{
 		Status:  backend.HealthStatusOk,
 		Message: "ok",
-	}, nil
+	}
+	log.DefaultLogger.Info("Health check completed", "status", result.Status, "message", result.Message)
+	return result, nil
 }
