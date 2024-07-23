@@ -9,7 +9,9 @@ Layout is as follows:
 - `grafana-aitraining-app/` contains the grafana plugin
 
 ## Development
+
 Requires:
+
 - Python (3.8 or later)
 - Hatch (best installed via "pipx install hatch" if you have pipx)
 - Node (20 or later)
