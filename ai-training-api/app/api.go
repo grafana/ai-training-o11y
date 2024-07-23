@@ -43,8 +43,6 @@ func (app *App) registerAPI(router *mux.Router) {
 
 // registerNewProcess registers a new Process and returns a UUID.
 func (a *App) registerNewProcess(tenantID string, req *http.Request) (interface{}, error) {
-	level.Info(a.logger).Log("msg", "request received to register new process")
-
 	// Register a new process.
 	process := &model.Process{}
 	process.ID = uuid.New()
@@ -160,7 +158,7 @@ func (a *App) getProcess(tenantID string, req *http.Request) (interface{}, error
 		return nil, middleware.ErrNotFound(err)
 	}
 
-	level.Info(a.logger).Log("msg", "found process", "process_id", processID)
+	level.Info(a.logger).Log("msg", "found process", "tenantID", tenantID, "process_id", processID)
 
 	err = a.db(req.Context()).
 		Where(&model.MetadataKV{
@@ -189,7 +187,7 @@ func (a *App) deleteProcess(tenantID string, req *http.Request) (interface{}, er
 		return nil, middleware.ErrNotFound(err)
 	}
 
-	level.Info(a.logger).Log("msg", "deleted process", "process_id", processID)
+	level.Info(a.logger).Log("msg", "deleted process", "tenantID", tenantID, "process_id", processID)
 	return nil, err
 }
 
@@ -205,7 +203,7 @@ func (a *App) listProcess(tenantID string, req *http.Request) (interface{}, erro
 		return nil, middleware.ErrNotFound(err)
 	}
 
-	level.Info(a.logger).Log("msg", "found processes", "processes", processes)
+	level.Info(a.logger).Log("msg", "found processes", "tenantID", tenantID, "len_processes", len(processes))
 	return processes, err
 }
 
@@ -286,7 +284,7 @@ func (a *App) updateProcessMetadata(tenantID string, req *http.Request) (interfa
 		}
 	}
 
-	level.Info(a.logger).Log("msg", "updated metadata", "process_id", processID)
+	level.Info(a.logger).Log("msg", "updated metadata", "tenantID", tenantID, "process_id", processID)
 
 	// Return the process ID.
 	return model.Process{ID: parsed}, err
@@ -299,8 +297,6 @@ type registerNewGroupRequest struct {
 
 // registerNewGroup registers a new Group and returns a UUID.
 func (a *App) registerNewGroup(tenantID string, req *http.Request) (interface{}, error) {
-	level.Info(a.logger).Log("msg", "request received to register new group")
-
 	// Read and parse request body.
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -312,8 +308,6 @@ func (a *App) registerNewGroup(tenantID string, req *http.Request) (interface{},
 	if err != nil {
 		return nil, middleware.ErrBadRequest(err)
 	}
-
-	fmt.Println("YOLOOOOOOOOOOO", data)
 
 	// Create unique group ID.
 	groupId := uuid.New()
@@ -334,7 +328,7 @@ func (a *App) registerNewGroup(tenantID string, req *http.Request) (interface{},
 		return nil, fmt.Errorf("error adding processes to group: %w", err)
 	}
 
-	level.Info(a.logger).Log("msg", "registered new group", "group_id", groupId)
+	level.Info(a.logger).Log("msg", "registered new group", "tenantID", tenantID, "group_id", groupId)
 	// Return the groupId.
 	return model.Group{ID: groupId}, err
 }
@@ -358,7 +352,7 @@ func (a *App) getGroup(tenantID string, req *http.Request) (interface{}, error) 
 		return nil, middleware.ErrNotFound(err)
 	}
 
-	level.Info(a.logger).Log("msg", "found group", "group_id", groupId)
+	level.Info(a.logger).Log("msg", "found group", "tenantID", tenantID, "group_id", groupId)
 	return group, err
 }
 
@@ -375,7 +369,7 @@ func (a *App) getGroups(tenantID string, req *http.Request) (interface{}, error)
 		return nil, middleware.ErrNotFound(err)
 	}
 
-	level.Info(a.logger).Log("msg", "found groups", "groups", groups)
+	level.Info(a.logger).Log("msg", "found groups", "tenantID", tenantID, "groups", groups)
 	return groups, err
 }
 
@@ -397,7 +391,7 @@ func (a *App) deleteGroup(tenantID string, req *http.Request) (interface{}, erro
 		return nil, middleware.ErrNotFound(err)
 	}
 
-	level.Info(a.logger).Log("msg", "deleted group", "group_id", groupId)
+	level.Info(a.logger).Log("msg", "deleted group", "tenantID", tenantID, "group_id", groupId)
 	return nil, err
 }
 
@@ -414,7 +408,7 @@ func (a *App) addModelMetrics(tenantID string, req *http.Request) (interface{}, 
 	}
 	defer req.Body.Close()
 
-	level.Debug(a.logger).Log("msg", "forwarding model-metrics to Loki", "body", string(body))
+	level.Info(a.logger).Log("msg", "forwarding model-metrics to Loki", "tenantID", tenantID, "body", string(body))
 
 	// Forward the request to the Loki endpoint.
 	httpClient := &http.Client{}
@@ -425,6 +419,7 @@ func (a *App) addModelMetrics(tenantID string, req *http.Request) (interface{}, 
 	}
 	lokiReq.Header.Set("Content-Type", "application/json")
 	if a.lokiTenant != "" {
+		level.Info(a.logger).Log("msg", "adding X-Scope-OrgID header to loki request", "received_org_id", req.Header.Get("X-Scope-OrgID"), "forwarded_org_id", a.lokiTenant)
 		lokiReq.Header.Set("X-Scope-OrgID", a.lokiTenant)
 	}
 	lokiResp, err := httpClient.Do(lokiReq)
