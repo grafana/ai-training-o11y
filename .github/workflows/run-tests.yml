@@ -71,7 +71,7 @@ jobs:
         cache-dependency-path: "**/*.sum"
 
     - name: Run Go tests
-      run: go test ./...
+      run: go test ./... -race -count=1 -v
       shell: bash
       working-directory: ${{ env.working-directory }}
 
