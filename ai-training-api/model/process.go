@@ -41,6 +41,7 @@ func (p *Process) AfterFind(tx *gorm.DB) error {
 	tx.Logger.Info(tx.Statement.Context, "AfterFind hook called to update EndTime")
 	if p.EndTime.Time.IsZero() && time.Since(p.StartTime) > time.Hour {
 		p.EndTime.Time = p.StartTime.Add(time.Hour)
+		p.EndTime.Valid = true
 		return tx.Save(p).Error
 	}
 	return nil
