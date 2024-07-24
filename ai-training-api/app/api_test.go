@@ -85,24 +85,24 @@ func newHTTPClient(tenant string) *http.Client {
 }
 
 func NewTestApp(t *testing.T, logger log.Logger) *App {
-    logLevel := &promlog.AllowedLevel{}
-    logLevel.Set("debug")
-    logFormat := &promlog.AllowedFormat{}
-    logFormat.Set("logfmt")
-    testApp, err := New(
-        listenAddress,
-        listenPort,
-        filepath.Join(t.TempDir(), "test.db"),
-        db.SQLite,
-        "0",      // constTenant
-        "",       // lokiAddress
-        "",       // lokiTenant
-        &promlog.Config{Level: logLevel, Format: logFormat},
-    )
-    require.NoError(t, err)
-    // Run the server in parallel
-    go testApp.Run()
-    return testApp
+	logLevel := &promlog.AllowedLevel{}
+	logLevel.Set("debug")
+	logFormat := &promlog.AllowedFormat{}
+	logFormat.Set("logfmt")
+	testApp, err := New(
+		listenAddress,
+		listenPort,
+		filepath.Join(t.TempDir(), "test.db"),
+		db.SQLite,
+		"0", // constTenant
+		"",  // lokiAddress
+		"",  // lokiTenant
+		&promlog.Config{Level: logLevel, Format: logFormat},
+	)
+	require.NoError(t, err)
+	// Run the server in parallel
+	go testApp.Run()
+	return testApp
 }
 
 func TestAppCreatesNewProcess(t *testing.T) {
@@ -277,7 +277,7 @@ func TestAppSetsCorrectEndTime(t *testing.T) {
 	require.NoError(t, err)
 	gpr := read[getProcessResponse](t, resp)
 	assert.Equal(t, process.ID, gpr.Data.ID)
-	assert.Equal(t, gpr.Data.EndTime, gpr.Data.StartTime.Add(time.Hour))
+	assert.Equal(t, gpr.Data.EndTime.Time, gpr.Data.StartTime.Add(time.Hour))
 }
 
 // This tests for the case where the same group name is added to two process
