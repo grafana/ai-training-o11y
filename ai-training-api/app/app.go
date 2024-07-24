@@ -62,7 +62,7 @@ func New(
 		return nil, fmt.Errorf("error connecting to database: %w", err)
 	}
 
-	level.Info(logger).Log("msg", "connected to database", "database_address", databaseAddress, "database_type", databaseType, "database_name", db.Name())
+	level.Info(logger).Log("msg", "connected to database", "database_type", databaseType, "database_name", db.Name())
 
 	// Migrate the database.
 	err = db.AutoMigrate(&model.Process{})
