@@ -1,6 +1,7 @@
 package model
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,8 +17,8 @@ type Process struct {
 	Status string `json:"status"`
 	// Start time.
 	StartTime time.Time `json:"start_time"`
-	// End time.
-	EndTime time.Time `json:"end_time"`
+	// End time. Should be nullable to allow for processes that are still running.
+	EndTime sql.NullTime `json:"end_time"`
 
 	// Group ID is the UUID of the group to which the process belongs.
 	// Its the foreign key to the Group table. It is a pointer to allow for null values.
@@ -38,8 +39,9 @@ type Process struct {
 // StartTime + 1 hour.
 func (p *Process) AfterFind(tx *gorm.DB) error {
 	tx.Logger.Info(tx.Statement.Context, "AfterFind hook called to update EndTime")
-	if p.EndTime.IsZero() && time.Since(p.StartTime) > time.Hour {
-		p.EndTime = p.StartTime.Add(time.Hour)
+	if p.EndTime.Time.IsZero() && time.Since(p.StartTime) > time.Hour {
+		p.EndTime.Time = p.StartTime.Add(time.Hour)
+		p.EndTime.Valid = true
 		return tx.Save(p).Error
 	}
 	return nil

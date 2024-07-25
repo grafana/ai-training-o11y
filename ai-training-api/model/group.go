@@ -1,6 +1,7 @@
 package model
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,8 +22,8 @@ type Group struct {
 	Status string `json:"status"`
 	// Start time.
 	StartTime time.Time `json:"start_time"`
-	// End time.
-	EndTime time.Time `json:"end_time"`
+	// End time. Should be nullable to allow for groups that are still running.
+	EndTime sql.NullTime `json:"end_time"`
 
 	// Processes in the group.
 	Processes []Process `json:"processes" gorm:"foreignKey:GroupID;references:ID;constraint:OnUpdate:CASCADE,OnDelete:CASCADE"`
@@ -46,7 +47,7 @@ func (t *Group) UpdateTimes(processes []Process) {
 		if p.StartTime.Before(t.StartTime) {
 			t.StartTime = p.StartTime
 		}
-		if p.EndTime.After(t.EndTime) {
+		if p.EndTime.Time.After(t.EndTime.Time) {
 			t.EndTime = p.EndTime
 		}
 	}
