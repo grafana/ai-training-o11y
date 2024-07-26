@@ -127,14 +127,8 @@ func TestAppCreatesNewProcess(t *testing.T) {
 	gpr := read[getProcessResponse](t, resp)
 	assert.Equal(t, cpr.Data.ID, gpr.Data.ID)
 	assert.Len(t, gpr.Data.Metadata, 2)
-	assert.Equal(t, "key1", gpr.Data.Metadata[0].Key)
-	assert.Equal(t, "string", gpr.Data.Metadata[0].Type)
-	assert.Equal(t, "value1", string(gpr.Data.Metadata[0].Value))
-	assert.Equal(t, "key2", gpr.Data.Metadata[1].Key)
-	assert.Equal(t, "int", gpr.Data.Metadata[1].Type)
-	value, err := model.UnmarshalMetadataValue(gpr.Data.Metadata[1].Value, gpr.Data.Metadata[1].Type)
-	require.NoError(t, err)
-	assert.Equal(t, 2, value)
+	assert.Contains(t, gpr.Data.Metadata, model.MetadataKV{TenantID: "0", Key: "key1", Type: "string", Value: []byte("value1"), ProcessID: cpr.Data.ID})
+	assert.Contains(t, gpr.Data.Metadata, model.MetadataKV{TenantID: "0", Key: "key2", Type: "int", Value: []byte("2"), ProcessID: cpr.Data.ID})
 }
 
 func TestAppCreatesNewProcessAndGroup(t *testing.T) {
