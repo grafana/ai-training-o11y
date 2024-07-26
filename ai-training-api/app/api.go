@@ -400,8 +400,6 @@ func (a *App) addModelMetrics(tenantID string, req *http.Request) (interface{}, 
 	// TODO: Integrate with GCom API to find the corresponding Loki TenantID associated
 	// with the tenantID.
 
-	// For now, we can just forward the request body as is, to the Loki endpoint.
-	// Read the request body.
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
 		return nil, middleware.ErrBadRequest(err)
@@ -424,6 +422,7 @@ func (a *App) addModelMetrics(tenantID string, req *http.Request) (interface{}, 
 	}
 	lokiResp, err := httpClient.Do(lokiReq)
 	if err != nil {
+		level.Error(a.logger).Log("msg", "error forwarding model-metrics to Loki", "err", err)
 		return nil, middleware.ErrBadRequest(err)
 	}
 	defer lokiResp.Body.Close()
@@ -431,6 +430,7 @@ func (a *App) addModelMetrics(tenantID string, req *http.Request) (interface{}, 
 	// Read the response body.
 	lokiRespBody, err := io.ReadAll(lokiResp.Body)
 	if err != nil {
+		level.Error(a.logger).Log("msg", "error reading response body from Loki", "err", err)
 		return nil, middleware.ErrBadRequest(err)
 	}
 
