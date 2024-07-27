@@ -34,12 +34,9 @@ services:
       - "9009:9009"
 
   db:
-    image: mariadb:10.3
+    image: mysql:8.0
     environment:
-      MARIADB_ROOT_PASSWORD: rootpass
-      MARIADB_DATABASE: aitraining
-      MARIADB_USER: user
-      MARIADB_PASSWORD: pass
+      MYSQL_ROOT_PASSWORD: rootpass
     volumes:
       - ./docker-compose/0-createdb.sql:/docker-entrypoint-initdb.d/0-createdb.sql
 
