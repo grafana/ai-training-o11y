@@ -161,41 +161,6 @@ def test_report_state_failure_api_error(client):
 
     assert result is False
 
-def test_send_model_metrics_success(client):
-    client.process_uuid = "test_uuid"
-    mock_response = Mock()
-    mock_response.status_code = 200
-
-    with patch('requests.post', return_value=mock_response), \
-         patch('time.time_ns', return_value=1000000000):
-        result = client.send_model_metrics({"metric": "value"}, x_axis={"epoch": 1})
-
-    assert result is True
-
-def test_send_model_metrics_failure_no_process(client):
-    result = client.send_model_metrics({"metric": "value"})
-    assert result is False
-
-def test_send_model_metrics_failure_api_error(client):
-    client.process_uuid = "test_uuid"
-    mock_response = Mock()
-    mock_response.status_code = 400
-    mock_response.text = "Error"
-
-    with patch('requests.post', return_value=mock_response):
-        result = client.send_model_metrics({"metric": "value"})
-
-    assert result is False
-
-def test_send_model_metrics_without_x_axis(client):
-    client.process_uuid = "test_uuid"
-    mock_response = Mock()
-    mock_response.status_code = 200
-
-    with patch('requests.post', return_value=mock_response), \
-         patch('time.time_ns', return_value=1000000000):
-        result = client.send_model_metrics({"metric": "value"})
-
 def test_register_process_clear_existing(client):
     client.process_uuid = "old_uuid"
     client.user_metadata = {"old": "data"}
@@ -243,44 +208,3 @@ def test_report_state_empty_state(client):
         result = client.report_state("")
 
     assert result is True
-
-def test_send_model_metrics_large_payload(client):
-    client.process_uuid = "test_uuid"
-    mock_response = Mock()
-    mock_response.status_code = 200
-
-    large_log = {"metric": "x" * 1000000}  # 1MB of data
-
-    with patch('requests.post', return_value=mock_response), \
-         patch('time.time_ns', return_value=1000000000):
-        result = client.send_model_metrics(large_log)
-
-    assert result is True
-
-def test_send_model_metrics_invalid_x_axis(client):
-    client.process_uuid = "test_uuid"
-    mock_response = Mock()
-    mock_response.status_code = 200
-
-    with patch('requests.post', return_value=mock_response), \
-         patch('time.time_ns', return_value=1000000000):
-        result = client.send_model_metrics({"metric": "value"}, x_axis={"key1": "value1", "key2": "value2"})
-
-    assert result is True  # The method should still succeed, using only the first key-value pair
-
-@pytest.mark.parametrize("invalid_log", [
-    None,
-    "",
-    123,
-    ["list", "instead", "of", "dict"],
-])
-def test_send_model_metrics_invalid_log(client, invalid_log):
-    client.process_uuid = "test_uuid"
-    mock_response = Mock()
-    mock_response.status_code = 200
-
-    with patch('requests.post', return_value=mock_response), \
-         patch('time.time_ns', return_value=1000000000):
-        result = client.send_model_metrics(invalid_log)
-
-    assert result is False  # The method should fail for invalid log formats

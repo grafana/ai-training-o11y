@@ -1,50 +1,41 @@
+from typing import Dict, Union, Optional
 from .. import client
 from .. import logger
 
-def log(log, *, x_axis=None):
+def log(log: Dict[str, Union[int, float]], *, x_axis: Optional[Dict[str, Union[int, float]]] = None) -> bool:
     """
-    Sends a log to the Loki server
-    :param log: The log message
-    :return: None
+    Sends a log to the Loki server.
+
+    Args:
+        log (Dict[str, Union[int, float]]): The log message as a dictionary with string keys and numeric values.
+        x_axis (Optional[Dict[str, Union[int, float]]], optional): A single-item dictionary representing the x-axis. Defaults to None.
+
+    Returns:
+        bool: True if the log was sent successfully, False otherwise.
     """
-    # Check that log is a dict with all keys strings
     if not isinstance(log, dict):
         logger.error("Log must be a dict")
         return False
-    for key in log.keys():
-        if not isinstance(key, str):
-            logger.error("Keys in log must be strings")
-            return False
 
-    # Check that all values are numbers
-    for key in log.keys():
-        if not isinstance(log[key], (int, float)):
-            logger.error("Values in log must be numbers")
-            return False
-
+    if not all(isinstance(key, str) and isinstance(value, (int, float)) for key, value in log.items()):
+        logger.error("Log must contain only string keys and numeric values")
+        return False
 
     if x_axis is None:
-        client.send_model_metrics(log)
-        return
+        return bool(client.send_model_metrics(log))
 
-    # Check if x_axis exists
     if not isinstance(x_axis, dict) or len(x_axis) != 1:
         logger.error("x_axis must be a dict with one key")
         return False
 
-    # Check that x_axis' single key is a string, and its value is a number
-    x_key = list(x_axis.keys())[0]
-    x_value = x_axis[x_key]
-    if not isinstance(x_key, str):
-        logger.error("x_axis key must be a string")
+    x_key, x_value = next(iter(x_axis.items()))
+
+    if not isinstance(x_key, str) or not isinstance(x_value, (int, float)):
+        logger.error("x_axis must have a string key and a numeric value")
         return False
-    if not isinstance(x_value, (int, float)):
-        logger.error("x_axis value must be a number")
-        return False
-    
-    # Check that this key is not already in the log line
-    if x_key in log.keys() and x_value != log[x_key]:
+
+    if x_key in log and x_value != log[x_key]:
         logger.error("x_axis key must not be in your metrics, or must have the same value")
         return False
 
-    client.send_model_metrics(log, x_axis=x_axis)
+    return bool(client.send_model_metrics(log, x_axis=x_axis))
