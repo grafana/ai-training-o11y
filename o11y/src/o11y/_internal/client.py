@@ -7,20 +7,24 @@ import requests
 import json
 import logging
 import os
-from .util.validate_url import validate_url
-from urllib.parse import urlparse
-from typing import Optional
-from .. import logger
 import time
+import warnings
+from typing import Any, Dict, Optional, Tuple
+
+import requests
+from urllib.parse import urlparse
+
+from .. import logger
 
 class Client:
     def __init__(self):
-        print("Initializing Client...")
-        self.process_uuid = None
-        self.user_metadata = None
-        self.url = None
-        self.token = None
-        self.tenant_id = None
+        logger.info("Initializing Client...")
+        self.process_uuid: Optional[str] = None
+        self.user_metadata: Optional[Dict[str, Any]] = None
+        self.url: Optional[str] = None
+        self.token: Optional[str] = None
+        self.tenant_id: Optional[str] = None
+        self.user_id: Optional[str] = None
         login_string = os.environ.get('GF_AI_TRAINING_CREDS')
         self.set_credentials(login_string)
 
@@ -33,7 +37,7 @@ class Client:
             token, user_id, uri = self._parse_login_string(login_string)
             uri = self._validate_credentials(token, user_id, uri)
             self._set_credentials(token, user_id, uri)
-            print("Credentials set successfully.")
+            logger.info("Credentials set successfully.")
             return True
         except Exception as e:
             warnings.warn(f"Invalid login string: {str(e)}")
@@ -69,10 +73,10 @@ class Client:
         self.url = uri
         self.token = token
         self.user_id = user_id
-        
-    def register_process(self, data):
+
+    def register_process(self, data: Dict[str, Any]) -> bool:
         if self.process_uuid:
-            print(f"Clearing existing process UUID: {self.process_uuid}")
+            logger.info(f"Clearing existing process UUID: {self.process_uuid}")
             self.process_uuid = None
             self.user_metadata = None
 
@@ -82,23 +86,29 @@ class Client:
         }
 
         url = f'{self.url}/api/v1/process/new'
-        response = requests.post(url, headers=headers, data=json.dumps(data))
+        response = requests.post(url, headers=headers, json=data)
 
         if response.status_code != 200:
-            logging.error(f'Failed to register with error: {response.text}')
+            logger.error(f'Failed to register with error: {response.text}')
             return False
+
         try:
-            process_uuid = response.json()['data']['process_uuid']
-        except:
-            logging.error(f'Failed to register with error: {response.text}')
+            response_data = response.json()
+            process_uuid = response_data['data']['process_uuid']
+        except json.JSONDecodeError:
+            logger.error(f'Failed to decode JSON response: {response.text}')
             return False
+        except KeyError:
+            logger.error(f'Missing expected data in response: {response.text}')
+            return False
+
         self.process_uuid = process_uuid
-        self.user_metadata = data['user_metadata']
+        self.user_metadata = data.get('user_metadata')
         return True
 
-    def update_metadata(self, process_uuid, user_metadata):
+    def update_metadata(self, process_uuid: str, user_metadata: Dict[str, Any]) -> bool:
         if not process_uuid:
-            logging.error("No process registered, unable to update metadata")
+            logger.error("No process registered, unable to update metadata")
             return False
         headers = {
             'Authorization': f'Bearer {self.tenant_id}:{self.token}',
@@ -108,16 +118,16 @@ class Client:
             'user_metadata': user_metadata
         }
         url = f'{self.url}/api/v1/process/{process_uuid}/update-metadata'
-        response = requests.post(url, headers=headers, data=json.dumps(data))
+        response = requests.post(url, headers=headers, json=data)
 
         if response.status_code != 200:
-            logging.error(f'Failed to update metadata: {response.text}')
+            logger.error(f'Failed to update metadata: {response.text}')
             return False
         return True
 
-    def report_state(self, state):
+    def report_state(self, state: str) -> bool:
         if not self.process_uuid:
-            logging.error("No process registered, unable to report state")
+            logger.error("No process registered, unable to report state")
             return False
         headers = {
             'Authorization': f'Bearer {self.tenant_id}:{self.token}',
@@ -127,25 +137,21 @@ class Client:
             'state': state
         }
         url = f'{self.url}/api/v1/process/{self.process_uuid}/state'
-        response = requests.post(url, headers=headers, data=json.dumps(data))
+        response = requests.post(url, headers=headers, json=data)
 
         if response.status_code != 200:
-            logging.error(f'Failed to report state: {response.text}')
+            logger.error(f'Failed to report state: {response.text}')
             return False
         return True
 
-    def send_model_metrics(self, log, *, x_axis=None):
+    def send_model_metrics(self, log: Dict[str, Any], *, x_axis: Optional[Dict[str, Any]] = None) -> bool:
         if not self.process_uuid:
-            logging.error("No process registered, unable to send logs")
-            return False
-        
-        if not isinstance(log, dict):
-            logging.error("Invalid log format: log must be a dictionary")
+            logger.error("No process registered, unable to send logs")
             return False
         
         timestamp = str(time.time_ns())
 
-        metadata = {
+        metadata: Dict[str, Any] = {
             "process_uuid": self.process_uuid,
             "type": "model-metrics"
         }
@@ -176,12 +182,13 @@ class Client:
         response = requests.post(
             url,
             headers={
-                'Authorization': f'Bearer {self.tenant_id}:{self.token}', 'Content-Type': 'application/json'
+                'Authorization': f'Bearer {self.tenant_id}:{self.token}',
+                'Content-Type': 'application/json'
             },
-            data=json.dumps(json_data)
+            json=json_data
         )
 
         if response.status_code != 200:
-            logging.error(f'Failed to log model metric: {response.text}')
+            logger.error(f'Failed to log model metric: {response.text}')
             return False
         return True
