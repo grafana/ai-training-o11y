@@ -1,11 +1,15 @@
 # Contains a python object representing the metadata client
 # This should handle anything related to the job itself, like registering the job, updating metadata, etc
 # This should not be used for logging, metrics, etc
+from typing import Optional, Tuple
+import warnings
 import requests
 import json
 import logging
 import os
 from .util.validate_url import validate_url
+from urllib.parse import urlparse
+from typing import Optional
 from .. import logger
 import time
 
@@ -20,36 +24,51 @@ class Client:
         login_string = os.environ.get('GF_AI_TRAINING_CREDS')
         self.set_credentials(login_string)
 
-    def set_credentials(self, login_string):
+    def set_credentials(self, login_string: Optional[str]) -> bool:
         if not login_string or not isinstance(login_string, str):
-            logger.error("No login string provided, please set GF_AI_TRAINING_CREDS environment variable")
+            warnings.warn("No login string provided, please set GF_AI_TRAINING_CREDS environment variable")
             return False
 
         try:
-            # Split the string at the last '@' character
-            creds, uri = login_string.rsplit('@', 1)
-
-            # Find the first ':' in the creds part
-            first_colon_index = creds.find(':')
-            if first_colon_index == -1:
-                raise ValueError("Invalid format: missing ':' in credentials")
-
-            token = creds[:first_colon_index]
-            user_id = creds[first_colon_index + 1:]
-
-        except ValueError as e:
-            logger.error(f"Invalid login string format. Expected format: token:user_id@uri")
+            token, user_id, uri = self._parse_login_string(login_string)
+            uri = self._validate_credentials(token, user_id, uri)
+            self._set_credentials(token, user_id, uri)
+            print("Credentials set successfully.")
+            return True
+        except Exception as e:
+            warnings.warn(f"Invalid login string: {str(e)}")
             return False
 
-        if not uri.startswith("http://") and not uri.startswith("https://"):
-            uri = "http://" + uri
-            print(f"Updated URL to: {uri}")
+    def _parse_login_string(self, login_string: str) -> Tuple[str, str, str]:
+        parts = login_string.split('@')
+        if len(parts) != 2:
+            raise ValueError("Invalid login string format. Expected format: token:user_id@uri")
+        
+        credentials, uri = parts
+        cred_parts = credentials.split(':')
+        if len(cred_parts) != 2:
+            raise ValueError("Invalid credentials format. Expected format: token:user_id")
+        
+        token, user_id = cred_parts
+        return token.strip(), user_id.strip(), uri.strip()
 
+    def _validate_credentials(self, token: str, user_id: str, uri: str) -> str:
+        if not user_id.isdigit():
+            warnings.warn("Invalid user_id: must be purely numeric")
+        
+        parsed_uri = urlparse(uri)
+        if not parsed_uri.scheme:
+            uri = "https://" + uri
+        elif parsed_uri.scheme not in ["http", "https"]:
+            warnings.warn(f"Invalid URI scheme '{parsed_uri.scheme}'. Using https instead.")
+            uri = "https://" + parsed_uri.netloc + parsed_uri.path
+        
+        return uri
+
+    def _set_credentials(self, token: str, user_id: str, uri: str) -> None:
         self.url = uri
         self.token = token
         self.user_id = user_id
-        print("Credentials set successfully.")
-        return True
         
     def register_process(self, data):
         if self.process_uuid:
