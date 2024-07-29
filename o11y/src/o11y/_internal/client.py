@@ -18,47 +18,51 @@ from .. import logger
 
 class Client:
     def __init__(self):
-        logger.info("Initializing Client...")
-        self.process_uuid: Optional[str] = None
-        self.user_metadata: Optional[Dict[str, Any]] = None
-        self.url: Optional[str] = None
-        self.token: Optional[str] = None
-        self.tenant_id: Optional[str] = None
-        self.user_id: Optional[str] = None
+        self.logger = logging.getLogger(__name__)
+        self.process_uuid = None
+        self.user_metadata = None
+        self.url = None
+        self.token = None
+        self.tenant_id = None
         login_string = os.environ.get('GF_AI_TRAINING_CREDS')
         self.set_credentials(login_string)
 
     def set_credentials(self, login_string: Optional[str]) -> bool:
+        self.logger.info(f"Setting credentials with login string: {login_string}")
         if not login_string or not isinstance(login_string, str):
+            self.logger.warning("No login string provided or invalid type")
             warnings.warn("No login string provided, please set GF_AI_TRAINING_CREDS environment variable")
             return False
 
         try:
-            token, user_id, uri = self._parse_login_string(login_string)
-            uri = self._validate_credentials(token, user_id, uri)
-            self._set_credentials(token, user_id, uri)
-            logger.info("Credentials set successfully.")
+            token, tenant_id, uri = self._parse_login_string(login_string)
+            self.logger.info(f"Parsed login string - Token: {token[:5]}..., User ID: {tenant_id}, URI: {uri}")
+            uri = self._validate_credentials(token, tenant_id, uri)
+            self._set_credentials(token, tenant_id, uri)
+            self.logger.info(f"Credentials set - URL: {self.url}, User ID: {self.tenant_id}, Token: {self.token[:5]}...")
             return True
         except Exception as e:
+            self.logger.error(f"Error setting credentials: {str(e)}")
             warnings.warn(f"Invalid login string: {str(e)}")
             return False
+
 
     def _parse_login_string(self, login_string: str) -> Tuple[str, str, str]:
         parts = login_string.split('@')
         if len(parts) != 2:
-            raise ValueError("Invalid login string format. Expected format: token:user_id@uri")
+            raise ValueError("Invalid login string format. Expected format: token:tenant_id@uri")
         
         credentials, uri = parts
         cred_parts = credentials.split(':')
         if len(cred_parts) != 2:
-            raise ValueError("Invalid credentials format. Expected format: token:user_id")
+            raise ValueError("Invalid credentials format. Expected format: token:tenant_id")
         
-        token, user_id = cred_parts
-        return token.strip(), user_id.strip(), uri.strip()
+        token, tenant_id = cred_parts
+        return token.strip(), tenant_id.strip(), uri.strip()
 
-    def _validate_credentials(self, token: str, user_id: str, uri: str) -> str:
-        if not user_id.isdigit():
-            warnings.warn("Invalid user_id: must be purely numeric")
+    def _validate_credentials(self, token: str, tenant_id: str, uri: str) -> str:
+        if not tenant_id.isdigit():
+            warnings.warn("Invalid tenant_id: must be purely numeric")
         
         parsed_uri = urlparse(uri)
         if not parsed_uri.scheme:
@@ -69,41 +73,49 @@ class Client:
         
         return uri
 
-    def _set_credentials(self, token: str, user_id: str, uri: str) -> None:
+    def _set_credentials(self, token: str, tenant_id: str, uri: str) -> None:
         self.url = uri
         self.token = token
-        self.user_id = user_id
+        self.tenant_id = tenant_id
 
-    def register_process(self, data: Dict[str, Any]) -> bool:
+    def register_process(self, data):
+        self.logger.info(f"Registering process with data: {data}")
         if self.process_uuid:
-            logger.info(f"Clearing existing process UUID: {self.process_uuid}")
+            self.logger.info(f"Clearing existing process UUID: {self.process_uuid}")
             self.process_uuid = None
             self.user_metadata = None
+
+        if not self.tenant_id or not self.token:
+            self.logger.error("User ID or token is not set. Make sure to call set_credentials first.")
+            return False
 
         headers = {
             'Authorization': f'Bearer {self.tenant_id}:{self.token}',
             'Content-Type': 'application/json'
         }
+        self.logger.info(f"Request headers: Authorization: Bearer {self.tenant_id[:5]}..:{self.token[:5]}...")
 
         url = f'{self.url}/api/v1/process/new'
-        response = requests.post(url, headers=headers, json=data)
-
-        if response.status_code != 200:
-            logger.error(f'Failed to register with error: {response.text}')
-            return False
-
+        self.logger.info(f"Sending request to URL: {url}")
+        
         try:
-            response_data = response.json()
-            process_uuid = response_data['data']['process_uuid']
-        except json.JSONDecodeError:
-            logger.error(f'Failed to decode JSON response: {response.text}')
-            return False
-        except KeyError:
-            logger.error(f'Missing expected data in response: {response.text}')
+            response = requests.post(url, headers=headers, json=data)
+            self.logger.info(f"Response status code: {response.status_code}")
+            self.logger.info(f"Response content: {response.text}")
+
+            if response.status_code != 200:
+                self.logger.error(f'Failed to register with error: {response.text}')
+                return False
+            
+            process_uuid = response.json()['data']['process_uuid']
+            self.logger.info(f"Received process UUID: {process_uuid}")
+        except Exception as e:
+            self.logger.error(f"Exception during process registration: {str(e)}")
             return False
 
         self.process_uuid = process_uuid
-        self.user_metadata = data.get('user_metadata')
+        self.user_metadata = data['user_metadata']
+        self.logger.info(f"Process registered successfully. UUID: {self.process_uuid}")
         return True
 
     def update_metadata(self, process_uuid: str, user_metadata: Dict[str, Any]) -> bool:
