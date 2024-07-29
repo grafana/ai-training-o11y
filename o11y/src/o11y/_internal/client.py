@@ -21,24 +21,36 @@ class Client:
         self.set_credentials(login_string)
 
     def set_credentials(self, login_string):
-        if not login_string or type(login_string) != str:
+        if not login_string or not isinstance(login_string, str):
             logger.error("No login string provided, please set GF_AI_TRAINING_CREDS environment variable")
             return False
-        if login_string.count("@") != 2:
-            logger.error("Invalid login string format")
+
+        try:
+            # Split the string at the last '@' character
+            creds, uri = login_string.rsplit('@', 1)
+
+            # Find the first ':' in the creds part
+            first_colon_index = creds.find(':')
+            if first_colon_index == -1:
+                raise ValueError("Invalid format: missing ':' in credentials")
+
+            token = creds[:first_colon_index]
+            user_id = creds[first_colon_index + 1:]
+
+        except ValueError as e:
+            logger.error(f"Invalid login string format. Expected format: token:user_id@uri")
             return False
 
-        token, tenant_id, url = login_string.split("@")
-        if not url.startswith("http://") and not url.startswith("https://"):
-            url = "http://" + url
-            print(f"Updated URL to: {url}")
+        if not uri.startswith("http://") and not uri.startswith("https://"):
+            uri = "http://" + uri
+            print(f"Updated URL to: {uri}")
 
-        self.url = url
+        self.url = uri
         self.token = token
-        self.tenant_id = tenant_id
+        self.user_id = user_id
         print("Credentials set successfully.")
         return True
-
+        
     def register_process(self, data):
         if self.process_uuid:
             print(f"Clearing existing process UUID: {self.process_uuid}")
