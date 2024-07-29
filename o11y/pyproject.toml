@@ -6,7 +6,8 @@ authors = [{name = "Grafana Labs", email = "info@grafana.com"}]
 readme = "README.md"
 requires-python = ">= 3.8"
 dependencies = [
-    "requests>=2.31.0"
+    "requests>=2.31.0",
+    "setuptools>=67.8.0",
 ]
 
 [build-system]
