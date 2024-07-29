@@ -191,16 +191,23 @@ class Client:
         }
 
         url = f'{self.url}/api/v1/process/{self.process_uuid}/model-metrics'
-        response = requests.post(
-            url,
-            headers={
-                'Authorization': f'Bearer {self.tenant_id}:{self.token}',
-                'Content-Type': 'application/json'
-            },
-            json=json_data
-        )
 
-        if response.status_code != 200:
-            logger.error(f'Failed to log model metric: {response.text}')
+        headers = {
+            'Authorization': f'Bearer {self.tenant_id}:{self.token}',
+            'Content-Type': 'application/json'
+        }
+
+        try:
+            response = requests.post(
+                url,
+                headers=headers,
+                json=json_data
+            )
+
+            if response.status_code != 200:
+                logger.error(f'Failed to log model metric. Status code: {response.status_code}, Response: {response.text}')
+                return False
+            return True
+        except requests.exceptions.RequestException as e:
+            logger.exception(f"An error occurred while sending the request: {e}")
             return False
-        return True
