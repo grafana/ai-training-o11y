@@ -15,42 +15,32 @@ class Client:
     def __init__(self):
         self.process_uuid = None
         self.user_metadata = None
+        self.url = None
+        self.token = None
+        self.tenant_id = None
         # We are going to assume that the user has set the credentials in the environment
         # There are other flows but it's the easiest one
         login_string = os.environ.get('GF_AI_TRAINING_CREDS')
         self.set_credentials(login_string)
 
     def set_credentials(self, login_string):
-
         if not login_string or type(login_string) != str:
             logger.error("No login string provided, please set GF_AI_TRAINING_CREDS environment variable")
             return False
-        # Count @ characters in the login string, should be 1
-        if login_string.count("@") != 1:
+        # Count @ characters in the login string, should be 2
+        if login_string.count("@") != 2:
             logger.error("Invalid login string format")
             return False
 
-        token, url = login_string.split("@")
-        url = "http://" + url
-        # Check that the token is exactly 40 characters of hex
-        if len(token) != 40 or not all(c in "0123456789abcdef" for c in token):
-            logger.error("Invalid token format")
-            return "Invalid token format"
-        # Disabled until I can figure out how to make this work with service names
-        # This is both a dev env problem and a problem when running in e.g. k8s
-        # # Validate that the url is a url
-        # if not validate_url(url):
-        #     logger.error("Invalid url format")
-        #     return "Invalid url format"
+        token, tenant_id, url = login_string.split("@")
+        if not url.startswith("http://") and not url.startswith("https://"):
+            url = "http://" + url
 
         self.url = url
         self.token = token
+        self.tenant_id = tenant_id
         return True
 
-    # Returns a boolean indicating if the process was successfully registered
-    # POST /api/v1/process/new
-    # Takes a JSON object with a key “user_metadata” containing a dictionary of metadata
-    # Returns a JSON object with a key “process_uuid” containing the UUID of the process
     def register_process(self, data):
         # If the process is currently registered, clear everything from it
         if self.process_uuid:
@@ -58,9 +48,10 @@ class Client:
             self.user_metadata = None
 
         headers = {
-            'Authorization': f'Bearer {self.token}',
+            'Authorization': f'Bearer {self.tenant_id}:{self.token}',
             'Content-Type': 'application/json'
         }
+
         response = requests.post(f'{self.url}/api/v1/process/new', headers=headers, data=json.dumps(data))
         if response.status_code != 200:
             logging.error(f'Failed to register with error: {response.text}')
@@ -80,7 +71,7 @@ class Client:
             logging.error("No process registered, unable to update metadata")
             return False
         headers = {
-            'Authorization': f'Bearer {self.token}',
+            'Authorization': f'Bearer {self.tenant_id}:{self.token}',
             'Content-Type': 'application/json'
         }
         data = {
