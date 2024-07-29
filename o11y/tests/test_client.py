@@ -32,13 +32,13 @@ def test_set_credentials(client, credentials, expected_result, expect_warning):
 
     if expected_result:
         assert client.token == "token123", f"Expected token to be 'token123', but got '{client.token}'"
-        assert client.user_id == "12345", f"Expected user_id to be '12345', but got '{client.user_id}'"
+        assert client.tenant_id == "12345", f"Expected tenant_id to be '12345', but got '{client.tenant_id}'"
         assert client.url == "https://example.com", f"Expected url to be 'https://example.com', got '{client.url}'"
 
 def test_parse_login_string_valid(client):
-    token, user_id, uri = client._parse_login_string("token123:12345@example.com")
+    token, tenant_id, uri = client._parse_login_string("token123:12345@example.com")
     assert token == "token123", f"Expected token 'token123', got '{token}'"
-    assert user_id == "12345", f"Expected user_id '12345', got '{user_id}'"
+    assert tenant_id == "12345", f"Expected tenant_id '12345', got '{tenant_id}'"
     assert uri == "example.com", f"Expected uri 'example.com', got '{uri}'"
 
 @pytest.mark.parametrize("invalid_login", [
@@ -53,12 +53,12 @@ def test_validate_credentials_valid(client):
     uri = client._validate_credentials("token123", "12345", "example.com")
     assert uri == "https://example.com", f"Expected 'https://example.com', got '{uri}'"
 
-def test_validate_credentials_non_numeric_user_id(client):
+def test_validate_credentials_non_numeric_tenant_id(client):
     with pytest.warns((Warning, DeprecationWarning)) as warning_info:
         uri = client._validate_credentials("token123", "user123", "example.com")
     assert uri == "https://example.com", f"Expected 'https://example.com', got '{uri}'"
     assert len(warning_info) == 1, f"Expected 1 warning, got {len(warning_info)}"
-    assert "Invalid user_id: must be purely numeric" in str(warning_info[0].message), f"Unexpected warning message: {warning_info[0].message}"
+    assert "Invalid tenant_id: must be purely numeric" in str(warning_info[0].message), f"Unexpected warning message: {warning_info[0].message}"
     print(f"Warning type: {type(warning_info[0].message).__name__}")
     print(f"Warning message: {str(warning_info[0].message)}")
 
@@ -82,7 +82,7 @@ def test_validate_credentials_invalid_scheme(client):
 def test_set_credentials_internal(client):
     client._set_credentials("token123", "12345", "https://example.com")
     assert client.token == "token123", f"Expected token 'token123', got '{client.token}'"
-    assert client.user_id == "12345", f"Expected user_id '12345', got '{client.user_id}'"
+    assert client.tenant_id == "12345", f"Expected tenant_id '12345', got '{client.tenant_id}'"
     assert client.url == "https://example.com", f"Expected url 'https://example.com', got '{client.url}'"
 
 def test_register_process_success(client):
