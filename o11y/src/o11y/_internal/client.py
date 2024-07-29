@@ -139,6 +139,10 @@ class Client:
             logging.error("No process registered, unable to send logs")
             return False
         
+        if not isinstance(log, dict):
+            logging.error("Invalid log format: log must be a dictionary")
+            return False
+        
         timestamp = str(time.time_ns())
 
         metadata = {
