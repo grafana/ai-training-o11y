@@ -3,6 +3,7 @@ package plugin
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend"
@@ -24,42 +25,53 @@ var (
 // App is an example app backend plugin which can respond to data queries.
 type App struct {
 	backend.CallResourceHandler
-	stackId string
+	lokiDatasourceName string
+	mimirDatasourceName string
 	metadataUrl string
 	metadataToken string
+	stackId string
 }
 
-// NewApp creates a new example *App instance.
 func NewApp(_ context.Context, appSettings backend.AppInstanceSettings) (instancemgmt.Instance, error) {
 	log.DefaultLogger.Info("Creating new App instance")
 	var app App
 
 	var settings map[string]interface{}
-    err := json.Unmarshal(appSettings.JSONData, &settings)
-    if err != nil {
-        log.DefaultLogger.Error("Failed to unmarshal app settings", "error", err)
-        return nil, err
-    }
-
-	// Check if metadataUrl exists in settings
-	if value, ok := settings["metadataUrl"]; ok {
-		switch url := value.(type) {
-		case string:
-			app.metadataUrl = url
-			log.DefaultLogger.Info("Metadata URL set", "url", app.metadataUrl)
-		default:
-			app.metadataUrl = "" 
-			log.DefaultLogger.Warn("Metadata URL in settings but is not a string, using empty string")
-		}
-	} else {
-		// If metadataUrl is not found, set it to an empty string or a default value
-		app.metadataUrl = "" 
-		log.DefaultLogger.Warn("Metadata URL not found in settings, using empty string")
+	err := json.Unmarshal(appSettings.JSONData, &settings)
+	if err != nil {
+		log.DefaultLogger.Error("Failed to unmarshal app settings", "error", err)
+		return nil, err
 	}
 
-	// Use a httpadapter (provided by the SDK) for resource calls. This allows us
-	// to use a *http.ServeMux for resource calls, so we can map multiple routes
-	// to CallResource without having to implement extra logic.
+	// Helper function to get string value from JSONData
+	getStringValue := func(key string) string {
+		if value, ok := settings[key]; ok {
+			if strValue, ok := value.(string); ok {
+				log.DefaultLogger.Info(fmt.Sprintf("%s set from JSONData", key), key, strValue)
+				return strValue
+			}
+			log.DefaultLogger.Warn(fmt.Sprintf("%s in JSONData is not a string", key))
+		} else {
+			log.DefaultLogger.Warn(fmt.Sprintf("%s not found in settings", key))
+		}
+		return ""
+	}
+
+	// Set values from JSONData
+	app.metadataUrl = getStringValue("metadataUrl")
+	app.stackId = getStringValue("stackId")
+	app.lokiDatasourceName = getStringValue("lokiDatasourceName")
+	app.mimirDatasourceName = getStringValue("mimirDatasourceName")
+
+	// Set metadataToken from DecryptedSecureJSONData
+	if token, ok := appSettings.DecryptedSecureJSONData["metadataToken"]; ok {
+		app.metadataToken = token
+		log.DefaultLogger.Info("Metadata token set from DecryptedSecureJSONData")
+	} else {
+		log.DefaultLogger.Warn("Metadata token not found in DecryptedSecureJSONData")
+	}
+
+	// Use a httpadapter (provided by the SDK) for resource calls.
 	mux := http.NewServeMux()
 	app.registerRoutes(mux)
 	app.CallResourceHandler = httpadapter.New(mux)

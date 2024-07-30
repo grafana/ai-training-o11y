@@ -10,17 +10,24 @@ export type JsonData = {
   metadataUrl?: string;
   lokiDatasourceName?: string;
   mimirDatasourceName?: string;
-  isApiKeySet?: boolean;
   stackId?: string;
+  isMetadataTokenSet?: boolean;
 };
 
 type State = {
   metadataUrl: string;
   lokiDatasourceName: string;
   mimirDatasourceName: string;
-  isApiKeySet: boolean;
-  apiKey: string;
+  metadataToken: string;
   stackId: string;
+  isMetadataTokenSet: boolean;
+  dirty: {
+    metadataUrl: boolean;
+    lokiDatasourceName: boolean;
+    mimirDatasourceName: boolean;
+    metadataToken: boolean;
+    stackId: boolean;
+  };
 };
 
 interface Props extends PluginConfigPageProps<AppPluginMeta<JsonData>> {}
@@ -28,13 +35,26 @@ interface Props extends PluginConfigPageProps<AppPluginMeta<JsonData>> {}
 export const AppConfig = ({ plugin }: Props) => {
   const s = useStyles2(getStyles);
   const { enabled, pinned, jsonData } = plugin.meta;
+  const originalValues = {
+    metadataUrl: jsonData?.metadataUrl || '',
+    lokiDatasourceName: jsonData?.lokiDatasourceName || '',
+    mimirDatasourceName: jsonData?.mimirDatasourceName || '',
+    stackId: jsonData?.stackId || '',
+  };
   const [state, setState] = useState<State>({
     metadataUrl: jsonData?.metadataUrl || '',
     lokiDatasourceName: jsonData?.lokiDatasourceName || '',
     mimirDatasourceName: jsonData?.mimirDatasourceName || '',
-    apiKey: '',
-    isApiKeySet: Boolean(jsonData?.isApiKeySet),
+    metadataToken: '',
     stackId: jsonData?.stackId || '',
+    isMetadataTokenSet: plugin.meta.secureJsonFields?.metadataToken || false,
+    dirty: {
+      metadataUrl: false,
+      lokiDatasourceName: false,
+      mimirDatasourceName: false,
+      metadataToken: false,
+      stackId: false,
+    },
   });
 
   // eslint-disable-next-line @typescript-eslint/array-type
@@ -53,50 +73,90 @@ export const AppConfig = ({ plugin }: Props) => {
     fetchDatasources();
   }, []);
 
-  const onResetApiKey = () =>
-    setState({
-      ...state,
-      apiKey: '',
-      isApiKeySet: false,
-    });
+  type StateKeys = keyof Omit<State, 'dirty'>;
 
-  const onChangeApiKey = (event: ChangeEvent<HTMLInputElement>) => {
-    setState({
-      ...state,
-      apiKey: event.target.value.trim(),
+  const onChangeField = (field: StateKeys, value: string | boolean) => {
+    setState((prevState) => {
+      // Only mark as dirty if the value has changed
+      let isDirty = false;
+    
+      // It either is or is not set
+      if (field !== 'isMetadataTokenSet') {
+        isDirty = value !== originalValues[field as keyof typeof originalValues] && 
+                  typeof value === 'string' && 
+                  value.length > 0;
+      }
+      return {
+        ...prevState,
+        [field]: value,
+        dirty: {
+          ...prevState.dirty,
+          [field]: isDirty,
+        },
+      };
     });
   };
-
+  
+  // Use this function for all field changes
+  const onChangeMetadataToken = (event: ChangeEvent<HTMLInputElement>) => {
+    onChangeField('metadataToken', event.target.value.trim());
+  };
+  
   const onChangeMetadataUrl = (event: ChangeEvent<HTMLInputElement>) => {
-    setState({
-      ...state,
-      metadataUrl: event.target.value.trim(),
-    });
+    onChangeField('metadataUrl', event.target.value.trim());
   };
-
+  
   const onChangeLokiDatasource = (option: SelectableValue<string>) => {
-    setState({
-      ...state,
-      lokiDatasourceName: option.value || '',
-    });
+    onChangeField('lokiDatasourceName', option.value || '');
   };
-
+  
   const onChangeMimirDatasource = (option: SelectableValue<string>) => {
-    setState({
-      ...state,
-      mimirDatasourceName: option.value || '',
-    });
+    onChangeField('mimirDatasourceName', option.value || '');
   };
-
+  
   const onChangeStackId = (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value.trim();
     if (/^\d*$/.test(value)) { // This regex ensures only digits are allowed
-      setState({
-        ...state,
-        stackId: value,
-      });
+      onChangeField('stackId', value);
     }
   };
+
+  // Function to check if the form should be enabled
+const isFormEnabled = () => {
+  return Object.entries(state.dirty).some(([field, isDirty]) => 
+    field !== 'isMetadataTokenSet' && isDirty
+  );
+};
+
+const handleSaveClick = () => {
+  const isJsonDataDirty = ['metadataUrl', 'lokiDatasourceName', 'mimirDatasourceName', 'stackId'].some(
+    field => state.dirty[field as keyof typeof state.dirty]
+  );
+
+  const isSecureJsonDataDirty = state.dirty.metadataToken;
+
+  const updateData: any = {
+    enabled,
+    pinned,
+  };
+
+  if (isJsonDataDirty) {
+    updateData.jsonData = {
+      metadataUrl: state.metadataUrl,
+      lokiDatasourceName: state.lokiDatasourceName,
+      mimirDatasourceName: state.mimirDatasourceName,
+      stackId: state.stackId,
+    };
+  }
+
+  if (isSecureJsonDataDirty) {
+    updateData.secureJsonData = {
+      metadataToken: state.metadataToken,
+    };
+  }
+
+  updatePluginAndReload(plugin.meta.id, updateData);
+};
 
   return (
     <div data-testid={testIds.appConfig.container}>
@@ -145,16 +205,19 @@ export const AppConfig = ({ plugin }: Props) => {
       {/* CUSTOM SETTINGS */}
       <FieldSet label="API Settings" className={s.marginTopXl}>
         {/* API Key */}
-        <Field label="API Key" description="A secret key for authenticating to our custom API">
+        <Field label="Metadata Service Token" description="A secret key for authenticating to our custom API">
           <SecretInput
             width={60}
-            data-testid={testIds.appConfig.apiKey}
-            id="api-key"
-            value={state.apiKey}
-            isConfigured={state.isApiKeySet}
+            data-testid={testIds.appConfig.metadataToken}
+            id="metadata-token"
+            isConfigured={state.isMetadataTokenSet}
+            value={state.metadataToken}
             placeholder={'Your secret API key'}
-            onChange={onChangeApiKey}
-            onReset={onResetApiKey}
+            onChange={onChangeMetadataToken}
+            onReset={() => {
+              onChangeField('metadataToken', '');
+              onChangeField('isMetadataTokenSet', false);
+            }}
           />
         </Field>
 
@@ -212,31 +275,8 @@ export const AppConfig = ({ plugin }: Props) => {
           <Button
             type="submit"
             data-testid={testIds.appConfig.submit}
-            onClick={() =>
-              updatePluginAndReload(plugin.meta.id, {
-                enabled,
-                pinned,
-                jsonData: {
-                  metadataUrl: state.metadataUrl,
-                  lokiDatasourceName: state.lokiDatasourceName,
-                  mimirDatasourceName: state.mimirDatasourceName,
-                  isApiKeySet: true,
-                  stackId: state.stackId,
-                },
-                secureJsonData: state.isApiKeySet
-                  ? undefined
-                  : {
-                      apiKey: state.apiKey,
-                    },
-              })
-            }
-            disabled={Boolean(
-              !state.metadataUrl ||
-                !state.lokiDatasourceName ||
-                !state.mimirDatasourceName ||
-                (!state.isApiKeySet && !state.apiKey) ||
-                !state.stackId
-            )}
+            onClick={handleSaveClick}
+            disabled={!isFormEnabled()}
           >
             Save API settings
           </Button>
