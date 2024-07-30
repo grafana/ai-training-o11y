@@ -11,6 +11,7 @@ export type JsonData = {
   lokiDatasourceName?: string;
   mimirDatasourceName?: string;
   isApiKeySet?: boolean;
+  stackId?: string;
 };
 
 type State = {
@@ -19,6 +20,7 @@ type State = {
   mimirDatasourceName: string;
   isApiKeySet: boolean;
   apiKey: string;
+  stackId: string;
 };
 
 interface Props extends PluginConfigPageProps<AppPluginMeta<JsonData>> {}
@@ -32,6 +34,7 @@ export const AppConfig = ({ plugin }: Props) => {
     mimirDatasourceName: jsonData?.mimirDatasourceName || '',
     apiKey: '',
     isApiKeySet: Boolean(jsonData?.isApiKeySet),
+    stackId: jsonData?.stackId || '',
   });
 
   // eslint-disable-next-line @typescript-eslint/array-type
@@ -85,12 +88,59 @@ export const AppConfig = ({ plugin }: Props) => {
     });
   };
 
+  const onChangeStackId = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value.trim();
+    if (/^\d*$/.test(value)) { // This regex ensures only digits are allowed
+      setState({
+        ...state,
+        stackId: value,
+      });
+    }
+  };
+
   return (
     <div data-testid={testIds.appConfig.container}>
       {/* ENABLE / DISABLE PLUGIN */}
       <FieldSet label="Enable / Disable">
-        {/* ... (existing enable/disable code remains unchanged) ... */}
-      </FieldSet>
+        {!enabled && (
+            <>
+              <div className={s.colorWeak}>The plugin is currently not enabled.</div>
+              <Button
+                className={s.marginTop}
+                variant="primary"
+                onClick={() =>
+                  updatePluginAndReload(plugin.meta.id, {
+                    enabled: true,
+                    pinned: true,
+                    jsonData,
+                  })
+                }
+              >
+                Enable plugin
+              </Button>
+            </>
+          )}
+
+          {/* Disable the plugin */}
+          {enabled && (
+            <>
+              <div className={s.colorWeak}>The plugin is currently enabled.</div>
+              <Button
+                className={s.marginTop}
+                variant="destructive"
+                onClick={() =>
+                  updatePluginAndReload(plugin.meta.id, {
+                    enabled: false,
+                    pinned: false,
+                    jsonData,
+                  })
+                }
+              >
+                Disable plugin
+              </Button>
+            </>
+          )}
+        </FieldSet>
 
       {/* CUSTOM SETTINGS */}
       <FieldSet label="API Settings" className={s.marginTopXl}>
@@ -146,6 +196,18 @@ export const AppConfig = ({ plugin }: Props) => {
           />
         </Field>
 
+        {/* Stack ID */}
+        <Field label="Stack ID" description="Enter the stack ID (uint64)" className={s.marginTop}>
+          <Input
+            width={60}
+            id="stack-id"
+            data-testid={testIds.appConfig.stackId}
+            value={state.stackId}
+            placeholder="Enter stack ID (only digits allowed)"
+            onChange={onChangeStackId}
+          />
+        </Field>
+
         <div className={s.marginTop}>
           <Button
             type="submit"
@@ -159,6 +221,7 @@ export const AppConfig = ({ plugin }: Props) => {
                   lokiDatasourceName: state.lokiDatasourceName,
                   mimirDatasourceName: state.mimirDatasourceName,
                   isApiKeySet: true,
+                  stackId: state.stackId,
                 },
                 secureJsonData: state.isApiKeySet
                   ? undefined
@@ -171,7 +234,8 @@ export const AppConfig = ({ plugin }: Props) => {
               !state.metadataUrl ||
                 !state.lokiDatasourceName ||
                 !state.mimirDatasourceName ||
-                (!state.isApiKeySet && !state.apiKey)
+                (!state.isApiKeySet && !state.apiKey) ||
+                !state.stackId
             )}
           >
             Save API settings

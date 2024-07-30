@@ -68,8 +68,8 @@ func (a *App) metadataHandler(target string) func(http.ResponseWriter, *http.Req
 		}
 		
 		// Set Authorization header if token is available
-		if a.metadataToken != "" {
-			req.Header.Set("Authorization", "Bearer "+a.metadataToken)
+		if a.metadataToken != "" && a.stackId != "" { // Change belongs here
+			req.Header.Set("Authorization", "Bearer "+ a.stackId + ":" + a.metadataToken)
 			log.DefaultLogger.Debug("Added bearer token to request")
 		} else {
 			log.DefaultLogger.Debug("No metadata token set, not adding to request")

@@ -6,6 +6,7 @@ export const testIds = {
     metadataUrl: 'app-config-metadata-url',
     lokiDatasource: 'app-config-loki-datasource',
     mimirDatasource: 'app-config-mimir-datasource',
+    stackId: 'app-config-stack-id',
     submit: 'app-config-submit',
   },
   pageOne: {
