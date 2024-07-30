@@ -197,7 +197,7 @@ export const AppConfig = ({ plugin }: Props) => {
         </Field>
 
         {/* Stack ID */}
-        <Field label="Stack ID" description="Enter the stack ID (uint64)" className={s.marginTop}>
+        <Field label="Stack ID" description="Enter the numeric stack ID" className={s.marginTop}>
           <Input
             width={60}
             id="stack-id"
