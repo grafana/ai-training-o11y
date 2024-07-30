@@ -108,6 +108,7 @@ func New(
 		_db:         db,
 		server:      s,
 		lokiAddress: lokiAddress,
+		lokiTenant:  lokiTenant,
 		logger:      logger,
 	}
 
