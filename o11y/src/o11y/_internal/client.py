@@ -99,6 +99,8 @@ class Client:
         except Exception as e:
             logger.error(f"Exception during process registration: {str(e)}")
             return False
+        
+        logger.info(f"Successfully registered process with UUID {process_uuid}")
 
         self.process_uuid = process_uuid
         self.user_metadata = data['user_metadata']
