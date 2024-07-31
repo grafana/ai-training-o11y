@@ -1,11 +1,11 @@
 export const testIds = {
   appConfig: {
     container: 'app-config-container',
-    apiKey: 'app-config-api-key',
-    apiUrl: 'app-config-api-url',
+    metadataToken: 'app-config-api-key',
     metadataUrl: 'app-config-metadata-url',
     lokiDatasource: 'app-config-loki-datasource',
     mimirDatasource: 'app-config-mimir-datasource',
+    stackId: 'app-config-stack-id',
     submit: 'app-config-submit',
   },
   pageOne: {

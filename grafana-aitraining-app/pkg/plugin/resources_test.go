@@ -136,11 +136,12 @@ func TestMetadataHandlerTokenInjection(t *testing.T) {
 	app := &App{
 		metadataUrl:   "http://example.com",
 		metadataToken: "test-token",
+		stackId:       "test-stack-id",
 	}
 
 	// Create a test server to mock the metadata service
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "Bearer test-token", r.Header.Get("Authorization"), "Bearer token should be set")
+		assert.Equal(t, "Bearer test-stack-id:test-token", r.Header.Get("Authorization"), "Bearer token should be set correctly")
 		assert.Equal(t, "/test", r.URL.Path, "Path should be correctly modified")
 		assert.Equal(t, "test-host", r.Header.Get("X-Forwarded-Host"), "X-Forwarded-Host should be set")
 		w.WriteHeader(http.StatusOK)
