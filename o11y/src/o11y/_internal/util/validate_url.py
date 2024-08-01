@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 import re
 
 url_regex = re.compile(
@@ -20,4 +21,3 @@ def validate_url(url):
     """
 
     return bool(url_regex.match(url))
-

@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: Apache-2.0
 # Contains a python object representing the metadata client
 # This should handle anything related to the job itself, like registering the job, updating metadata, etc
 # This should not be used for logging, metrics, etc
