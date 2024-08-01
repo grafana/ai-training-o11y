@@ -6,7 +6,6 @@ from typing import Optional, Tuple
 import warnings
 import requests
 import json
-import logging
 import os
 import time
 import warnings
@@ -19,7 +18,6 @@ from .. import logger
 
 class Client:
     def __init__(self):
-        self.logger = logging.getLogger(__name__)
         self.process_uuid = None
         self.user_metadata = None
         self.url = None
@@ -29,21 +27,16 @@ class Client:
         self.set_credentials(login_string)
 
     def set_credentials(self, login_string: Optional[str]) -> bool:
-        self.logger.info(f"Setting credentials with login string: {login_string}")
         if not login_string or not isinstance(login_string, str):
-            self.logger.warning("No login string provided or invalid type")
             warnings.warn("No login string provided, please set GF_AI_TRAINING_CREDS environment variable")
             return False
 
         try:
             token, tenant_id, uri = self._parse_login_string(login_string)
-            self.logger.info(f"Parsed login string - Token: {token[:5]}..., User ID: {tenant_id}, URI: {uri}")
             uri = self._validate_credentials(token, tenant_id, uri)
             self._set_credentials(token, tenant_id, uri)
-            self.logger.info(f"Credentials set - URL: {self.url}, User ID: {self.tenant_id}, Token: {self.token[:5]}...")
             return True
         except Exception as e:
-            self.logger.error(f"Error setting credentials: {str(e)}")
             warnings.warn(f"Invalid login string: {str(e)}")
             return False
 
@@ -80,43 +73,35 @@ class Client:
         self.tenant_id = tenant_id
 
     def register_process(self, data):
-        self.logger.info(f"Registering process with data: {data}")
         if self.process_uuid:
-            self.logger.info(f"Clearing existing process UUID: {self.process_uuid}")
             self.process_uuid = None
             self.user_metadata = None
 
         if not self.tenant_id or not self.token:
-            self.logger.error("User ID or token is not set. Make sure to call set_credentials first.")
+            logger.error("User ID or token is not set.")
             return False
 
         headers = {
             'Authorization': f'Bearer {self.tenant_id}:{self.token}',
             'Content-Type': 'application/json'
         }
-        self.logger.info(f"Request headers: Authorization: Bearer {self.tenant_id[:5]}..:{self.token[:5]}...")
 
         url = f'{self.url}/api/v1/process/new'
-        self.logger.info(f"Sending request to URL: {url}")
         
         try:
             response = requests.post(url, headers=headers, json=data)
-            self.logger.info(f"Response status code: {response.status_code}")
-            self.logger.info(f"Response content: {response.text}")
 
             if response.status_code != 200:
-                self.logger.error(f'Failed to register with error: {response.text}')
                 return False
             
             process_uuid = response.json()['data']['process_uuid']
-            self.logger.info(f"Received process UUID: {process_uuid}")
         except Exception as e:
-            self.logger.error(f"Exception during process registration: {str(e)}")
+            logger.error(f"Exception during process registration: {str(e)}")
             return False
 
         self.process_uuid = process_uuid
         self.user_metadata = data['user_metadata']
-        self.logger.info(f"Process registered successfully. UUID: {self.process_uuid}")
+        logger.info(f"Process registered successfully. UUID: {self.process_uuid}")
         return True
 
     def update_metadata(self, process_uuid: str, user_metadata: Dict[str, Any]) -> bool:
