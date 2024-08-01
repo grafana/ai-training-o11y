@@ -1,7 +1,12 @@
+name: aitraining-app
+
+include:
+  - ./docker-compose/databases.yml
+
 services:
   grafana:
     container_name: grafana-aitraining-app
-    image: grafana/grafana-oss:10.4.1
+    image: grafana/grafana-oss:11.1.3
     environment:
       - GF_DEFAULT_APP_MODE=development # Ideally this should be moved to grafana.ini
     volumes:
@@ -16,22 +21,6 @@ services:
       sh -c "sed -i 's/<\/body><\/html>/<script src=\"http:\/\/localhost:35729\/livereload.js\"><\/script><\/body><\/html>/g' /usr/share/grafana/public/views/index.html && /run.sh"
     ports:
       - "3000:3000"
-
-  loki:
-    image: grafana/loki:3.0.0
-    command: -config.file=/etc/loki/local-config.yaml
-    ports:
-      - "3100:3100"
-
-  mimir:
-    image: grafana/mimir:2.11.0
-    volumes:
-      - ./.config/mimir/config:/etc/mimir-config
-    entrypoint:
-      - /bin/mimir
-      - -config.file=/etc/mimir-config/mimir.yml
-    ports:
-      - "9009:9009"
 
   db:
     image: mysql:8.0
