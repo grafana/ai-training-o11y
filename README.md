@@ -29,4 +29,4 @@ Grafana will be hosted at localhost:3000 with the plugin.
 
 ## Licensing
 
-ai-training-api and grafana-aitraining-app are licensed AGPL v3, o11y (the python exporter) is Apache
+See [LICENSING.md](LICENSING.md)
