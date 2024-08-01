@@ -9,7 +9,9 @@ Layout is as follows:
 - `grafana-aitraining-app/` contains the grafana plugin
 
 ## Development
+
 Requires:
+
 - Python (3.8 or later)
 - Hatch (best installed via "pipx install hatch" if you have pipx)
 - Node (20 or later)
@@ -24,3 +26,7 @@ Builds dev environment with "make docker"
 Once it's up, you can background it or open another terminal and use "make jupyter" to open a jupyter server. It will have a link to jupyter in your terminal.
 
 Grafana will be hosted at localhost:3000 with the plugin.
+
+## Licensing
+
+See [LICENSING.md](LICENSING.md)
