@@ -1,5 +1,3 @@
-name: aitraining-app
-
 include:
   - ./docker-compose/databases.yml
 
