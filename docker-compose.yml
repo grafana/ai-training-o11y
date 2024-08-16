@@ -1,7 +1,7 @@
 services:
   grafana:
-    container_name: grafana-aitraining-app
-    image: grafana/grafana-oss:10.4.1
+    container_name: grafana-with-training-app
+    image: grafana/grafana-oss:11.1.3
     environment:
       - GF_DEFAULT_APP_MODE=development # Ideally this should be moved to grafana.ini
     volumes:
@@ -16,22 +16,12 @@ services:
       sh -c "sed -i 's/<\/body><\/html>/<script src=\"http:\/\/localhost:35729\/livereload.js\"><\/script><\/body><\/html>/g' /usr/share/grafana/public/views/index.html && /run.sh"
     ports:
       - "3000:3000"
-
-  loki:
-    image: grafana/loki:3.0.0
-    command: -config.file=/etc/loki/local-config.yaml
-    ports:
-      - "3100:3100"
-
-  mimir:
-    image: grafana/mimir:2.11.0
-    volumes:
-      - ./.config/mimir/config:/etc/mimir-config
-    entrypoint:
-      - /bin/mimir
-      - -config.file=/etc/mimir-config/mimir.yml
-    ports:
-      - "9009:9009"
+    depends_on:
+      - mimir
+      - loki
+      - pyroscope
+      - tempo
+      - ai-training-api
 
   db:
     image: mysql:8.0
@@ -56,6 +46,42 @@ services:
       - "8000:8000"
     depends_on:
       - db
+
+  mimir:
+    image: grafana/mimir:2.12.0
+    restart: on-failure
+    command:
+      - -config.file=/etc/mimir-config/mimir.yml
+    volumes:
+      - ./.config/mimir:/etc/mimir-config
+    ports:
+      - "9009:9009"
+
+  loki:
+    image: grafana/loki:3.0.0
+    restart: on-failure
+    ports:
+      - "3100:3100"
+
+  tempo:
+    image: grafana/tempo:2.4.1
+    restart: on-failure
+    command:
+      - "-storage.trace.backend=local"                  # tell tempo where to permanently put traces
+      - "-storage.trace.local.path=/tmp/tempo/traces"
+      - "-storage.trace.wal.path=/tmp/tempo/wal"        # tell tempo where to store the wal
+      - "-auth.enabled=false"                           # disables the requirement for the X-Scope-OrgID header
+      - "-server.http-listen-port=3200"
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+
+  pyroscope:
+    image: grafana/pyroscope:1.5.0
+    restart: on-failure
+    ports:
+      - "4040:4040"
+
 
 networks:
   shared-network:
