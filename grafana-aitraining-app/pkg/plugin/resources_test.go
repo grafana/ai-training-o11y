@@ -250,6 +250,8 @@ func TestMetadataHandlerNoToken(t *testing.T) {
 		assert.Empty(t, r.Header.Get("Authorization"), "Authorization header should not be set")
 		assert.Equal(t, "/test", r.URL.Path, "Path should be correctly modified")
 		assert.Equal(t, "example.com", r.Header.Get("X-Forwarded-Host"), "X-Forwarded-Host should be set")
+		assert.NotEmpty(t, r.Header.Get("X-Custom-Header"), "Custom header should be preserved")
+		assert.NotEmpty(t, r.Header.Get("Another-Custom-Header"), "Another custom header should be preserved")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"metadata": "test"}`))
 	}))
@@ -258,17 +260,33 @@ func TestMetadataHandlerNoToken(t *testing.T) {
 	// Update the app's metadataUrl to point to our test server
 	app.metadataUrl = testServer.URL
 
-	// Create a test request
-	req := httptest.NewRequest("GET", "/metadata/test", nil)
-	req.Host = "example.com"
+	// Helper function to create and send a request
+	sendRequest := func(t *testing.T, path string, headers map[string]string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest("GET", path, nil)
+		req.Host = "example.com"
+		for key, value := range headers {
+			req.Header.Set(key, value)
+		}
+		rr := httptest.NewRecorder()
+		handler := app.metadataHandler(app.metadataUrl)
+		handler(rr, req)
+		return rr
+	}
 
-	// Create a response recorder
-	rr := httptest.NewRecorder()
+	// Test case 1: Basic request with one custom header
+	t.Run("Basic Request", func(t *testing.T) {
+		headers := map[string]string{"X-Custom-Header": "test-value", "Another-Custom-Header": "another-value"}
+		rr := sendRequest(t, "/metadata/test", headers)
+		assert.Equal(t, http.StatusOK, rr.Code, "Handler returned wrong status code")
+	})
 
-	// Call the metadataHandler
-	handler := app.metadataHandler(app.metadataUrl)
-	handler(rr, req)
-
-	// Check the response
-	assert.Equal(t, http.StatusOK, rr.Code, "Handler returned wrong status code")
+	// Test case 2: Request with multiple custom headers
+	t.Run("Multiple Custom Headers", func(t *testing.T) {
+		headers := map[string]string{
+			"X-Custom-Header": "preserved-value",
+			"Another-Custom-Header": "another-value",
+		}
+		rr := sendRequest(t, "/metadata/test", headers)
+		assert.Equal(t, http.StatusOK, rr.Code, "Handler returned wrong status code for preserved headers test")
+	})
 }
