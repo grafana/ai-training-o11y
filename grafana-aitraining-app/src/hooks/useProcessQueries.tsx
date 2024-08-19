@@ -39,6 +39,12 @@ const useProcessQueries = () => {
 
   const runQueries = async () => {
     setLokiQueryStatus('loading');
+
+    if (datasource === null || datasource === '' || datasource.error) {
+      console.error('Error getting datasource:', datasource.error);
+      setLokiQueryStatus('error');
+      return;
+    }
   
     const queryPromises = selectedRows.map(async (processData, index) => {
       const startDate = dateTime(processData.start_time);
