@@ -142,7 +142,7 @@ func TestMetadataHandlerTokenInjection(t *testing.T) {
 	// Create a test server to mock the metadata service
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "Bearer test-stack-id:test-token", r.Header.Get("Authorization"), "Bearer token should be set correctly")
-		assert.Equal(t, "/ai-training/test", r.URL.Path, "Path should be correctly modified")
+		assert.Equal(t, "/test", r.URL.Path, "Path should be correctly modified")
 		assert.Equal(t, "test-host", r.Header.Get("X-Forwarded-Host"), "X-Forwarded-Host should be set")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"metadata": "test"}`))
@@ -189,15 +189,13 @@ func TestMetadataHandlerPathTransformations(t *testing.T) {
 		expectedPath   string
 		expectedStatus int
 	}{
-		{"Metadata prefix", "/metadata/api/v1/processes", "/ai-training/api/v1/processes", http.StatusOK},
-		{"AI training prefix", "/ai-training/api/v1/processes", "/ai-training/api/v1/processes", http.StatusOK},
-		{"Metadata and AI training", "/metadata/ai-training/api/v1/processes", "/ai-training/api/v1/processes", http.StatusOK},
-		{"No prefix", "/api/v1/processes", "/ai-training/api/v1/processes", http.StatusOK},
-		{"Root path with metadata", "/metadata", "/ai-training", http.StatusOK},
-		{"Root path", "/", "/ai-training", http.StatusOK},
-		{"Metadata root path", "/metadata/", "/ai-training", http.StatusOK},
-		{"AI training root path", "/ai-training", "/ai-training", http.StatusOK},
-		{"AI training root path with slash", "/ai-training/", "/ai-training", http.StatusOK},
+		{"Metadata prefix", "/metadata/api/v1/processes", "/api/v1/processes", http.StatusOK},
+		{"No metadata prefix", "/api/v1/processes", "/api/v1/processes", http.StatusOK},
+		{"Metadata in middle", "/some/path/metadata/api/v1/processes", "/api/v1/processes", http.StatusOK},
+		{"Root path with metadata", "/metadata", "/", http.StatusOK},
+		{"Root path", "/", "/", http.StatusOK},
+		{"Metadata root path", "/metadata/", "/", http.StatusOK},
+		{"Multiple metadata in path", "/metadata/something/metadata/api", "/something/metadata/api", http.StatusOK},
 	}
 
 	for _, tc := range testCases {
