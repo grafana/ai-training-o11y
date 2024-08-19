@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"path"
 	"strings"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
@@ -60,22 +61,19 @@ func (a *App) metadataHandler(target string) func(http.ResponseWriter, *http.Req
 
 	originalDirector := p.Director
 	p.Director = func(req *http.Request) {
-		// Remove the "/metadata" prefix from the path
-		if strings.HasPrefix(req.URL.Path, "/metadata") {
-			req.URL.Path = req.URL.Path[len("/metadata"):]
-		}
-
 		originalDirector(req)
 
-		// Ensure the path starts with "/ai-training" if it doesn't already
-		if !strings.HasPrefix(req.URL.Path, "/ai-training") {
-			req.URL.Path = "/ai-training" + req.URL.Path
+		// Trim everything up to and including the first occurrence of "/metadata"
+		if index := strings.Index(req.URL.Path, "/metadata"); index != -1 {
+			req.URL.Path = req.URL.Path[index+len("/metadata"):]
 		}
 
-		// Remove trailing slash if the path is just "/ai-training/"
-		if req.URL.Path == "/ai-training/" {
-			req.URL.Path = "/ai-training"
+		// Combine the target path with the incoming path
+		targetPath := remote.Path
+		if targetPath == "" {
+			targetPath = "/"
 		}
+		req.URL.Path = path.Join(targetPath, req.URL.Path)
 
 		// Set X-Forwarded-Host
 		if req.Host != "" {
