@@ -1,13 +1,37 @@
-import { useAsync } from 'react-use';
 import { useTrainingAppStore } from 'utils/state';
 import { runQuery } from 'utils/runQuery';
 import { dateTime, TimeRange } from '@grafana/data';
-import { getDataSourceSrv } from '@grafana/runtime';
+import { FetchResponse, getBackendSrv, getDataSourceSrv } from '@grafana/runtime';
+import { lastValueFrom } from 'rxjs';
+import { useAsync } from 'react-use';
+
+export const getSettings = async (pluginId: string) => {
+  const response = getBackendSrv().fetch({
+    url: `/api/plugins/${pluginId}/settings`,
+    method: 'get',
+  });
+
+  const dataResponse = await lastValueFrom(response);
+  const { lokiDatasourceName, mimirDatasourceName, metadataUrl } = (dataResponse as FetchResponse<any>).data.jsonData;
+  return { lokiDatasourceName, mimirDatasourceName, metadataUrl };
+}
 
 const useProcessQueries = () => {
-  const datasource = useAsync(async () => {
-    return getDataSourceSrv().get('Loki');
-  }, []);
+  let datasource: any = null;
+
+  // Define the async function to get the datasource
+  const fetchDatasource = async () => {
+    try {
+      const settings = await getSettings('grafana-aitraining-app');
+      return getDataSourceSrv().get(settings.lokiDatasourceName);
+    } catch (error) {
+      console.error('Error getting datasource settings:', error);
+      throw error;
+    }
+  };
+  
+  // Use useAsync at the top level
+  datasource = useAsync(fetchDatasource, []);
 
   const isReady = datasource.loading !== true;
 
@@ -15,6 +39,12 @@ const useProcessQueries = () => {
 
   const runQueries = async () => {
     setLokiQueryStatus('loading');
+
+    if (datasource === null || datasource === '' || datasource.error) {
+      console.error('Error getting datasource:', datasource.error);
+      setLokiQueryStatus('error');
+      return;
+    }
   
     const queryPromises = selectedRows.map(async (processData, index) => {
       const startDate = dateTime(processData.start_time);
