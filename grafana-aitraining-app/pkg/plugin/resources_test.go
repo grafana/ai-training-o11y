@@ -250,7 +250,8 @@ func TestMetadataHandlerNoToken(t *testing.T) {
 	// Create a test server to mock the metadata service
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Empty(t, r.Header.Get("Authorization"), "Authorization header should not be set")
-		assert.Equal(t, "/ai-training/test", r.URL.Path, "Path should be correctly modified")
+		assert.Equal(t, "/test", r.URL.Path, "Path should be correctly modified")
+		assert.Equal(t, "example.com", r.Header.Get("X-Forwarded-Host"), "X-Forwarded-Host should be set")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"metadata": "test"}`))
 	}))
@@ -261,6 +262,7 @@ func TestMetadataHandlerNoToken(t *testing.T) {
 
 	// Create a test request
 	req := httptest.NewRequest("GET", "/metadata/test", nil)
+	req.Host = "example.com"
 
 	// Create a response recorder
 	rr := httptest.NewRecorder()
