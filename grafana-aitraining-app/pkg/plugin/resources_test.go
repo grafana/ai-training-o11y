@@ -176,6 +176,69 @@ func TestMetadataHandlerTokenInjection(t *testing.T) {
 	assert.Equal(t, "test", responseBody["metadata"], "Unexpected response body")
 }
 
+func TestMetadataHandlerPathTransformations(t *testing.T) {
+	app := &App{
+		metadataUrl:   "http://example.com",
+		metadataToken: "test-token",
+		stackId:       "test-stack-id",
+	}
+
+	testCases := []struct {
+		name           string
+		inputPath      string
+		expectedPath   string
+		expectedStatus int
+	}{
+		{"Metadata prefix", "/metadata/api/v1/processes", "/api/v1/processes", http.StatusOK},
+		{"No metadata prefix", "/api/v1/processes", "/api/v1/processes", http.StatusOK},
+		{"Metadata in middle", "/some/path/metadata/api/v1/processes", "/api/v1/processes", http.StatusOK},
+		{"Root path with metadata", "/metadata", "/", http.StatusOK},
+		{"Root path", "/", "/", http.StatusOK},
+		{"Metadata root path", "/metadata/", "/", http.StatusOK},
+		{"Multiple metadata in path", "/metadata/something/metadata/api", "/something/metadata/api", http.StatusOK},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Create a test server to mock the metadata service
+			testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, tc.expectedPath, r.URL.Path, "Path should be correctly modified")
+				assert.Equal(t, "Bearer test-stack-id:test-token", r.Header.Get("Authorization"), "Bearer token should be set correctly")
+				assert.Equal(t, "test-host", r.Header.Get("X-Forwarded-Host"), "X-Forwarded-Host should be set")
+				w.WriteHeader(tc.expectedStatus)
+				w.Write([]byte(`{"metadata": "test"}`))
+			}))
+			defer testServer.Close()
+
+			// Update the app's metadataUrl to point to our test server
+			app.metadataUrl = testServer.URL
+
+			// Create a test request
+			req := httptest.NewRequest("GET", tc.inputPath, nil)
+			req.Host = "test-host"  // Set the Host header
+
+			// Create a response recorder
+			rr := httptest.NewRecorder()
+
+			// Call the metadataHandler
+			handler := app.metadataHandler(app.metadataUrl)
+			handler(rr, req)
+
+			// Check the response
+			assert.Equal(t, tc.expectedStatus, rr.Code, "Handler returned wrong status code")
+
+			body, err := io.ReadAll(rr.Body)
+			require.NoError(t, err, "Failed to read response body")
+
+			var responseBody map[string]string
+			err = json.Unmarshal(body, &responseBody)
+			require.NoError(t, err, "Failed to unmarshal response body")
+
+			assert.Equal(t, "test", responseBody["metadata"], "Unexpected response body")
+		})
+	}
+}
+
 func TestMetadataHandlerNoToken(t *testing.T) {
 	app := &App{
 		metadataUrl: "http://example.com",
@@ -185,6 +248,10 @@ func TestMetadataHandlerNoToken(t *testing.T) {
 	// Create a test server to mock the metadata service
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Empty(t, r.Header.Get("Authorization"), "Authorization header should not be set")
+		assert.Equal(t, "/test", r.URL.Path, "Path should be correctly modified")
+		assert.Equal(t, "example.com", r.Header.Get("X-Forwarded-Host"), "X-Forwarded-Host should be set")
+		assert.NotEmpty(t, r.Header.Get("X-Custom-Header"), "Custom header should be preserved")
+		assert.NotEmpty(t, r.Header.Get("Another-Custom-Header"), "Another custom header should be preserved")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"metadata": "test"}`))
 	}))
@@ -193,17 +260,33 @@ func TestMetadataHandlerNoToken(t *testing.T) {
 	// Update the app's metadataUrl to point to our test server
 	app.metadataUrl = testServer.URL
 
-	// Create a test request
-	req, err := http.NewRequest("GET", "/metadata/test", nil)
-	require.NoError(t, err, "Failed to create test request")
+	// Helper function to create and send a request
+	sendRequest := func(t *testing.T, path string, headers map[string]string) *httptest.ResponseRecorder {
+		req := httptest.NewRequest("GET", path, nil)
+		req.Host = "example.com"
+		for key, value := range headers {
+			req.Header.Set(key, value)
+		}
+		rr := httptest.NewRecorder()
+		handler := app.metadataHandler(app.metadataUrl)
+		handler(rr, req)
+		return rr
+	}
 
-	// Create a response recorder
-	rr := httptest.NewRecorder()
+	// Test case 1: Basic request with one custom header
+	t.Run("Basic Request", func(t *testing.T) {
+		headers := map[string]string{"X-Custom-Header": "test-value", "Another-Custom-Header": "another-value"}
+		rr := sendRequest(t, "/metadata/test", headers)
+		assert.Equal(t, http.StatusOK, rr.Code, "Handler returned wrong status code")
+	})
 
-	// Call the metadataHandler
-	handler := app.metadataHandler(app.metadataUrl)
-	handler(rr, req)
-
-	// Check the response
-	assert.Equal(t, http.StatusOK, rr.Code, "Handler returned wrong status code")
+	// Test case 2: Request with multiple custom headers
+	t.Run("Multiple Custom Headers", func(t *testing.T) {
+		headers := map[string]string{
+			"X-Custom-Header": "preserved-value",
+			"Another-Custom-Header": "another-value",
+		}
+		rr := sendRequest(t, "/metadata/test", headers)
+		assert.Equal(t, http.StatusOK, rr.Code, "Handler returned wrong status code for preserved headers test")
+	})
 }

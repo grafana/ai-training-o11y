@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"path"
+	"strings"
 
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 )
@@ -57,27 +59,32 @@ func (a *App) metadataHandler(target string) func(http.ResponseWriter, *http.Req
 	}
 	p := httputil.NewSingleHostReverseProxy(remote)
 
-	// Modify the director to add the bearer token and X-Forwarded-Host
 	originalDirector := p.Director
 	p.Director = func(req *http.Request) {
 		originalDirector(req)
-		
+
+		// Trim everything up to and including the first occurrence of "/metadata"
+		if index := strings.Index(req.URL.Path, "/metadata"); index != -1 {
+			req.URL.Path = req.URL.Path[index+len("/metadata"):]
+		}
+
+		// Combine the target path with the incoming path
+		targetPath := remote.Path
+		if targetPath == "" {
+			targetPath = "/"
+		}
+		req.URL.Path = path.Join(targetPath, req.URL.Path)
+
 		// Set X-Forwarded-Host
 		if req.Host != "" {
 			req.Header.Set("X-Forwarded-Host", req.Host)
 		}
-		
+
 		// Set Authorization header if token is available
-		if a.metadataToken != "" && a.stackId != "" { // Change belongs here
+		if a.metadataToken != "" && a.stackId != "" {
 			req.Header.Set("Authorization", "Bearer "+ a.stackId + ":" + a.metadataToken)
-			log.DefaultLogger.Debug("Added bearer token to request")
-		} else {
-			log.DefaultLogger.Debug("No metadata token set, not adding to request")
 		}
 
-		// Remove the "/metadata" prefix from the path
-		req.URL.Path = req.URL.Path[len("/metadata"):]
-		
 		log.DefaultLogger.Debug("Proxying metadata request", 
 			"method", req.Method, 
 			"url", req.URL.String(), 
