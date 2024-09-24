@@ -28,7 +28,8 @@ COPY --link ai-training-api ./
 
 FROM prep AS development
 
-RUN --mount=type=cache,id=go-cache-ai-training-api,target=/opt/go go install github.com/air-verse/air@latest
+# Air fixed at 1.52.3 because 1.60.0 would force upgrading go to 1.23 and this is easier
+RUN --mount=type=cache,id=go-cache-ai-training-api,target=/opt/go go install github.com/air-verse/air@v1.52.3
 
 FROM prep as build
 
