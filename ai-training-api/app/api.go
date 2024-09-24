@@ -1,12 +1,12 @@
 package api
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/go-kit/log/level"
@@ -395,47 +395,106 @@ func (a *App) deleteGroup(tenantID string, req *http.Request) (interface{}, erro
 	return nil, err
 }
 
-// addModelMetrics proxies logs related model-metrics to Loki.
 func (a *App) addModelMetrics(tenantID string, req *http.Request) (interface{}, error) {
-	// TODO: Integrate with GCom API to find the corresponding Loki TenantID associated
-	// with the tenantID.
+    // Extract ProcessID from URL path
+    vars := mux.Vars(req)
+    processIDStr, ok := vars["id"]
+    if !ok {
+        return nil, middleware.ErrBadRequest(fmt.Errorf("process ID not provided in URL"))
+    }
 
-	body, err := io.ReadAll(req.Body)
-	if err != nil {
-		return nil, middleware.ErrBadRequest(err)
-	}
-	defer req.Body.Close()
+    // Parse ProcessID to UUID
+    processID, err := uuid.Parse(processIDStr)
+    if err != nil {
+        return nil, middleware.ErrBadRequest(fmt.Errorf("invalid process ID: %w", err))
+    }
 
-	level.Info(a.logger).Log("msg", "forwarding model-metrics to Loki", "tenantID", tenantID, "body", string(body))
+    // Validate ProcessID exists
+    var process model.Process
+    if err := a.db(req.Context()).First(&process, "id = ?", processID).Error; err != nil {
+        if errors.Is(err, gorm.ErrRecordNotFound) {
+            return nil, middleware.ErrNotFound(fmt.Errorf("process not found"))
+        }
+        return nil, fmt.Errorf("error checking process: %w", err)
+    }
 
-	// Forward the request to the Loki endpoint.
-	httpClient := &http.Client{}
-	lokiEndpoint := a.lokiAddress
-	lokiReq, err := http.NewRequest("POST", lokiEndpoint, bytes.NewBuffer(body))
-	if err != nil {
-		return nil, middleware.ErrBadRequest(err)
-	}
-	lokiReq.Header.Set("Content-Type", "application/json")
-	if a.lokiTenant != "" {
-		level.Info(a.logger).Log("msg", "adding X-Scope-OrgID header to loki request", "received_org_id", req.Header.Get("X-Scope-OrgID"), "forwarded_org_id", a.lokiTenant)
-		lokiReq.Header.Set("X-Scope-OrgID", a.lokiTenant)
-	}
-	lokiResp, err := httpClient.Do(lokiReq)
-	if err != nil {
-		level.Error(a.logger).Log("msg", "error forwarding model-metrics to Loki", "err", err)
-		return nil, middleware.ErrBadRequest(err)
-	}
-	defer lokiResp.Body.Close()
+    // Parse request body
+    var metricsData []struct {
+        MetricName string `json:"metric_name"`
+        StepName   string `json:"step_name"`
+        Points     []struct {
+            Step  uint32 `json:"step"`
+            Value string `json:"value"`
+        } `json:"points"`
+    }
 
-	// Read the response body.
-	lokiRespBody, err := io.ReadAll(lokiResp.Body)
-	if err != nil {
-		level.Error(a.logger).Log("msg", "error reading response body from Loki", "err", err)
-		return nil, middleware.ErrBadRequest(err)
-	}
+    if err := json.NewDecoder(req.Body).Decode(&metricsData); err != nil {
+        return nil, middleware.ErrBadRequest(err)
+    }
 
-	// Return the response body.
-	return string(lokiRespBody), nil
+    // Convert tenantID to uint64 for StackID
+    stackID, err := strconv.ParseUint(tenantID, 10, 64)
+    if err != nil {
+        return nil, middleware.ErrBadRequest(fmt.Errorf("invalid tenant ID: %w", err))
+    }
+
+    var createdMetrics []model.ModelMetrics
+
+    // Start a transaction
+    tx := a.db(req.Context()).Begin()
+    if tx.Error != nil {
+        return nil, fmt.Errorf("error starting transaction: %w", tx.Error)
+    }
+
+    for _, metricData := range metricsData {
+        for _, point := range metricData.Points {
+            metric := model.ModelMetrics{
+                StackID:     stackID,
+                ProcessID:   processID,
+                MetricName:  metricData.MetricName,
+                StepName:    metricData.StepName,
+                Step:        point.Step,
+                MetricValue: point.Value,
+            }
+
+            // Validate fields
+            if err := validateModelMetric(&metric); err != nil {
+                tx.Rollback()
+                return nil, middleware.ErrBadRequest(err)
+            }
+
+            // Save to database
+            if err := tx.Create(&metric).Error; err != nil {
+                tx.Rollback()
+                return nil, fmt.Errorf("error creating model metric: %w", err)
+            }
+
+            createdMetrics = append(createdMetrics, metric)
+        }
+    }
+
+    // Commit the transaction
+    if err := tx.Commit().Error; err != nil {
+        return nil, fmt.Errorf("error committing transaction: %w", err)
+    }
+
+    return createdMetrics, nil
+}
+
+func validateModelMetric(m *model.ModelMetrics) error {
+    if len(m.MetricName) == 0 || len(m.MetricName) > 32 {
+        return fmt.Errorf("metric name must be between 1 and 32 characters")
+    }
+    if len(m.StepName) == 0 || len(m.StepName) > 32 {
+        return fmt.Errorf("step name must be between 1 and 32 characters")
+    }
+    if m.Step == 0 {
+        return fmt.Errorf("step must be a positive number")
+    }
+    if len(m.MetricValue) == 0 || len(m.MetricValue) > 64 {
+        return fmt.Errorf("metric value must be between 1 and 64 characters")
+    }
+    return nil
 }
 
 func namedParam(req *http.Request, name string) string {

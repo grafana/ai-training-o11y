@@ -1,24 +1,20 @@
 package model
 
 import (
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 type ModelMetrics struct {
-	// Unique identifier for the metric entry.
-	ID           uint   `json:"id" gorm:"primaryKey;autoIncrement"`
-	// Tenant ID is used to identify the tenant to which the metric belongs.
-	Tenant       string `json:"tenant" gorm:"size:255;not null"`
-	// Run ID is used to identify the specific run.
-	Run          string `json:"run" gorm:"size:255;not null"`
-	// The name of the metric.
-	MetricName   string `json:"metric_name" gorm:"size:255;not null"`
-	// Step represents the measurement step; unsigned integer.
-	Step         uint   `json:"step" gorm:"not null"`
-	// MetricValue stores the value of the metric as a string.
-	MetricValue  string `json:"metric_value" gorm:"size:255;not null"`
-}
+    StackID     uint64   `json:"stack_id" gorm:"not null;primaryKey"`
+    ProcessID   uuid.UUID `json:"process_id" gorm:"type:char(36);not null;primaryKey;foreignKey:ProcessID;references:ID"` // Foreign key
+    MetricName  string   `json:"metric_name" gorm:"size:32;not null;primaryKey"`
+    StepName    string   `json:"step_name" gorm:"size:32;not null;primaryKey"`
+    Step        uint32   `json:"step" gorm:"not null;primaryKey"`
+    MetricValue string   `json:"metric_value" gorm:"size:64;not null"`
 
+    Process Process `gorm:"foreignKey:ProcessID;references:ID"` // Relationship definition
+}
 // Add a custom hook if necessary for additional logic.
 // Example: AfterCreate hook for custom logic
 func (m *ModelMetrics) AfterCreate(tx *gorm.DB) error {
