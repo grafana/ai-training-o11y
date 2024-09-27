@@ -163,3 +163,45 @@ func (a *App) saveModelMetrics(ctx context.Context, stackID uint64, processID uu
 
 	return createdMetrics, nil
 }
+
+func (a *App) getMetricsForGrafana(ctx context.Context, tenantID uint64, processID uuid.UUID) (map[string]interface{}, error) {
+	var metrics []model.ModelMetrics
+
+	// Retrieve all relevant metrics from the database
+	err := a.db(ctx).
+		Where("stack_id = ? AND process_id = ?", tenantID, processID).
+		Order("metric_name ASC, step_name ASC, step ASC").
+		Find(&metrics).Error
+
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving model metrics: %w", err)
+	}
+
+	// Map to store series for each unique metric_name and step_name
+	seriesMap := make(map[string][][2]interface{})
+
+	// Iterate over the metrics and build the series data
+	for _, metric := range metrics {
+		seriesKey := fmt.Sprintf("%s_%s", metric.MetricName, metric.StepName)
+		point := [2]interface{}{metric.Step, metric.MetricValue}
+
+		// Append the point to the appropriate series
+		seriesMap[seriesKey] = append(seriesMap[seriesKey], point)
+	}
+
+	// Assemble the final result for Grafana
+	var result []map[string]interface{}
+	for key, points := range seriesMap {
+		result = append(result, map[string]interface{}{
+			"name":   key,
+			"points": points,
+		})
+	}
+
+	// Prepare the final JSON response
+	response := map[string]interface{}{
+		"series": result,
+	}
+
+	return response, nil
+}
