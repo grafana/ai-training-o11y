@@ -16,7 +16,7 @@ interface GraphsProps {
   rows: RowData[];
 }
 
-export const GraphsTab: React.FC<GraphsProps> = ({ rows }) => {
+export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
   const { lokiQueryStatus, lokiQueryData, organizedLokiData, resetLokiResults, setOrganizedLokiData } =
     useTrainingAppStore();
   const { isReady, runQueries } = useProcessQueries();
