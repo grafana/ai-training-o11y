@@ -1,7 +1,7 @@
 import React from 'react';
 
 import { GrafanaTheme2 } from '@grafana/data';
-import { useStyles2, Checkbox } from '@grafana/ui';
+import { useStyles2 } from '@grafana/ui';
 
 import { css } from '@emotion/css';
 
@@ -38,9 +38,7 @@ export const ProcessListItem: React.FC<ProcessListItemProps> = ({
         }}
       >
         <div className={styles.checkboxWrapper}>
-          <Checkbox
-            value={isSelected}
-          />
+          <input type="checkbox" checked={isSelected} />
         </div>
         <div>{process.process_uuid}</div>
         <div className={styles.details}>

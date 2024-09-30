@@ -171,7 +171,7 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 	}{
 		{
 			name: "Valid request",
-			requestBody: []modelMetricsRequest{
+			requestBody: []ModelMetricsRequest{
 				{
 					MetricName: "accuracy",
 					StepName:   "training",
@@ -188,7 +188,7 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 		},
 		{
 			name: "Invalid metric name",
-			requestBody: []modelMetricsRequest{
+			requestBody: []ModelMetricsRequest{
 				{
 					MetricName: "",
 					StepName:   "training",
@@ -202,7 +202,7 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 		},
 		{
 			name: "Invalid step name",
-			requestBody: []modelMetricsRequest{
+			requestBody: []ModelMetricsRequest{
 				{
 					MetricName: "accuracy",
 					StepName:   "",
@@ -216,7 +216,7 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 		},
 		{
 			name: "Invalid step value",
-			requestBody: []modelMetricsRequest{
+			requestBody: []ModelMetricsRequest{
 				{
 					MetricName: "accuracy",
 					StepName:   "training",
@@ -230,7 +230,7 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 		},
 		{
 			name: "Invalid metric value",
-			requestBody: []modelMetricsRequest{
+			requestBody: []ModelMetricsRequest{
 				{
 					MetricName: "accuracy",
 					StepName:   "training",
@@ -260,97 +260,6 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 			} else {
 				assert.NoError(t, err)
 				assert.Len(t, result, tt.expectedLen)
-			}
-		})
-	}
-}
-
-func TestGetMetrics(t *testing.T) {
-	db, cleanup := setupTestDB(t)
-	defer cleanup()
-
-	if db == nil {
-		t.Fatal("setupTestDB returned a nil database")
-	}
-
-	app := &testApp{
-		App: App{
-			_db:   db,
-			dbMux: &sync.Mutex{},
-			logger: log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr)),
-		},
-	}
-
-	tests := []struct {
-		name           string
-		setupDB        func(*gorm.DB) (uint64, uuid.UUID) // Modified to return stackID and processID
-		expectedSeries int
-		expectedErrMsg string
-	}{
-		{
-			name: "Multiple metrics for a single process",
-			setupDB: func(db *gorm.DB) (uint64, uuid.UUID) {
-				stackID := uint64(1)
-				processID := uuid.New()
-
-				metrics := []model.ModelMetrics{
-					{StackID: stackID, ProcessID: processID, MetricName: "cpu_usage", StepName: "step1", Step: 1, MetricValue: "10.0"},
-					{StackID: stackID, ProcessID: processID, MetricName: "cpu_usage", StepName: "step1", Step: 2, MetricValue: "20.0"},
-					{StackID: stackID, ProcessID: processID, MetricName: "memory_usage", StepName: "step1", Step: 1, MetricValue: "30.0"},
-				}
-				for _, metric := range metrics {
-					result := db.Create(&metric)
-					if result.Error != nil {
-						t.Fatalf("Failed to create model metrics: %v", result.Error)
-					}
-				}
-				return stackID, processID
-			},
-			expectedSeries: 2, // 2 unique (MetricName, StepName) pairs
-		},
-		{
-			name: "No metrics for process",
-			setupDB: func(db *gorm.DB) (uint64, uuid.UUID) {
-				stackID := uint64(1)
-				processID := uuid.New()
-				// No metrics inserted into the database
-				return stackID, processID
-			},
-			expectedSeries: 0,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			stackID, processID := tt.setupDB(db)
-
-			// Call the function under test
-			response, err := app.getMetricsForGrafana(context.Background(), stackID, processID)
-
-			if tt.expectedErrMsg != "" {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedErrMsg)
-			} else {
-				assert.NoError(t, err)
-
-				// Verify the response
-				series, ok := response["series"].([]map[string]interface{})
-				if !ok {
-					t.Fatalf("Expected 'series' to be a list of maps, got: %T", response["series"])
-				}
-
-				assert.Equal(t, tt.expectedSeries, len(series))
-
-				// Optionally, check the content of the series
-				if tt.expectedSeries > 0 {
-					for _, s := range series {
-						name := s["name"].(string)
-						points := s["points"].([][2]interface{})
-
-						// Ensure each series has at least one point
-						assert.NotEmpty(t, points, "Series %s should have points", name)
-					}
-				}
 			}
 		})
 	}

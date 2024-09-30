@@ -16,7 +16,7 @@ import (
 	"github.com/grafana/ai-training-o11y/ai-training-api/model"
 )
 
-type modelMetricsRequest struct {
+type ModelMetricsRequest struct {
 	MetricName string `json:"metric_name"`
 	StepName   string `json:"step_name"`
 	Points     []struct {
@@ -24,6 +24,30 @@ type modelMetricsRequest struct {
 		Value string `json:"value"`
 	} `json:"points"`
 }
+
+type AddModelMetricsResponse struct {
+    Message        string `json:"message"`
+    MetricsCreated int    `json:"metricsCreated"`
+}
+
+// This is for return
+// We want an array of objects that contain grafana dataframes
+// For visualizing
+type DataFrame struct {
+    Name   string        `json:"name"`
+    Type   string        `json:"type"`
+    Values []interface{} `json:"values"`
+}
+
+// To make it less painful to unmarshal and group them
+type DataFrameWrapper struct {
+    MetricName string   `json:"MetricName"`
+    StepName   string   `json:"StepName"`
+    Fields     DataFrame  `json:"fields"`
+}
+
+type GetModelMetricsResponse []DataFrameWrapper
+
 
 func (a *App) addModelMetrics(tenantID string, req *http.Request) (interface{}, error) {
 	// Extract and validate ProcessID
@@ -49,12 +73,19 @@ func (a *App) addModelMetrics(tenantID string, req *http.Request) (interface{}, 
 		return nil, middleware.ErrBadRequest(fmt.Errorf("invalid tenant ID: %w", err))
 	}
 
-	createdMetrics, err := a.saveModelMetrics(req.Context(), stackID, processID, metricsData)
+	// Save the metrics and get the count of created metrics
+	createdCount, err := a.saveModelMetrics(req.Context(), stackID, processID, metricsData)
 	if err != nil {
 		return nil, err
 	}
 
-	return createdMetrics, nil
+	// Return a JSON response with success message and count of metrics inserted
+	response := map[string]interface{}{
+		"message":        "Metrics successfully added",
+		"metricsCreated": createdCount,
+	}
+
+	return response, nil
 }
 
 func extractAndValidateProcessID(req *http.Request) (uuid.UUID, error) {
@@ -92,8 +123,8 @@ func (a *App) validateProcessExists(ctx context.Context, processID uuid.UUID) er
 	return nil
 }
 
-func parseAndValidateModelMetricsRequest(req *http.Request) ([]modelMetricsRequest, error) {
-	var metricsData []modelMetricsRequest
+func parseAndValidateModelMetricsRequest(req *http.Request) ([]ModelMetricsRequest, error) {
+	var metricsData []ModelMetricsRequest
 
 	if err := json.NewDecoder(req.Body).Decode(&metricsData); err != nil {
 		return nil, middleware.ErrBadRequest(err)
@@ -108,7 +139,7 @@ func parseAndValidateModelMetricsRequest(req *http.Request) ([]modelMetricsReque
 	return metricsData, nil
 }
 
-func validateModelMetricRequest(m *modelMetricsRequest) error {
+func validateModelMetricRequest(m *ModelMetricsRequest) error {
 	if len(m.MetricName) == 0 || len(m.MetricName) > 32 {
 		return fmt.Errorf("metric name must be between 1 and 32 characters")
 	}
@@ -126,13 +157,13 @@ func validateModelMetricRequest(m *modelMetricsRequest) error {
 	return nil
 }
 
-func (a *App) saveModelMetrics(ctx context.Context, stackID uint64, processID uuid.UUID, metricsData []modelMetricsRequest) ([]model.ModelMetrics, error) {
-	var createdMetrics []model.ModelMetrics
+func (a *App) saveModelMetrics(ctx context.Context, stackID uint64, processID uuid.UUID, metricsData []ModelMetricsRequest) (int, error) {
+	var createdCount int
 
 	// Start a transaction
 	tx := a.db(ctx).Begin()
 	if tx.Error != nil {
-		return nil, fmt.Errorf("error starting transaction: %w", tx.Error)
+		return 0, fmt.Errorf("error starting transaction: %w", tx.Error)
 	}
 
 	for _, metricData := range metricsData {
@@ -149,59 +180,59 @@ func (a *App) saveModelMetrics(ctx context.Context, stackID uint64, processID uu
 			// Save to database
 			if err := tx.Create(&metric).Error; err != nil {
 				tx.Rollback()
-				return nil, fmt.Errorf("error creating model metric: %w", err)
+				return 0, fmt.Errorf("error creating model metric: %w", err)
 			}
-
-			createdMetrics = append(createdMetrics, metric)
+			createdCount++
 		}
 	}
 
 	// Commit the transaction
 	if err := tx.Commit().Error; err != nil {
-		return nil, fmt.Errorf("error committing transaction: %w", err)
+		return 0, fmt.Errorf("error committing transaction: %w", err)
 	}
 
-	return createdMetrics, nil
+	return createdCount, nil
 }
 
-func (a *App) getMetricsForGrafana(ctx context.Context, tenantID uint64, processID uuid.UUID) (map[string]interface{}, error) {
-	var metrics []model.ModelMetrics
+// func (a *App) getModelMetrics(tenantID string, req *http.Request) (GetModelMetricsResponse, error) {
+// 	// Retrieved from DB
+// 	var rows []model.ModelMetrics
+// 	// To return to the client
+// 	var response GetModelMetricsResponse
 
-	// Retrieve all relevant metrics from the database
-	err := a.db(ctx).
-		Where("stack_id = ? AND process_id = ?", tenantID, processID).
-		Order("metric_name ASC, step_name ASC, step ASC").
-		Find(&metrics).Error
+// 	// Extract and validate ProcessID
+// 	processID, err := extractAndValidateProcessID(req)
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving model metrics: %w", err)
-	}
+// 	if err != nil {
+// 		return nil, err
+// 	}
 
-	// Map to store series for each unique metric_name and step_name
-	seriesMap := make(map[string][][2]interface{})
+// 	// Convert tenantID to uint64 for StackID
+// 	stackID, err := strconv.ParseUint(tenantID, 10, 64)
+// 	if err != nil {
+// 		return nil, middleware.ErrBadRequest(fmt.Errorf("invalid tenant ID: %w", err))
+// 	}
 
-	// Iterate over the metrics and build the series data
-	for _, metric := range metrics {
-		seriesKey := fmt.Sprintf("%s_%s", metric.MetricName, metric.StepName)
-		point := [2]interface{}{metric.Step, metric.MetricValue}
+// 	// Retrieve all relevant metrics from the database
+// 	err = a.db(req.Context()).
+// 		Where("stack_id = ? AND process_id = ?", stackID, processID).
+// 		Order("metric_name ASC, step_name ASC, step ASC").
+// 		Find(rows).Error
 
-		// Append the point to the appropriate series
-		seriesMap[seriesKey] = append(seriesMap[seriesKey], point)
-	}
+// 	if err != nil {
+// 		return nil, fmt.Errorf("error retrieving model metrics: %w", err)
+// 	}
 
-	// Assemble the final result for Grafana
-	var result []map[string]interface{}
-	for key, points := range seriesMap {
-		result = append(result, map[string]interface{}{
-			"name":   key,
-			"points": points,
-		})
-	}
+// 	var currentDataFrame string
+// 	// Iterate over the metrics and build the series data
+// 	for _, row := range rows {
+// 		seriesKey := fmt.Sprintf("%s_%s", metric.MetricName, metric.StepName)
 
-	// Prepare the final JSON response
-	response := map[string]interface{}{
-		"series": result,
-	}
+// 		// Append the point to the appropriate series
+// 	}
 
-	return response, nil
-}
+// 	return response, nil
+// }
