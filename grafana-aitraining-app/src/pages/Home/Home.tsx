@@ -3,11 +3,11 @@ import { useParams, useHistory } from 'react-router-dom';
 
 import { GrafanaTheme2 } from '@grafana/data';
 import { PluginPage } from '@grafana/runtime';
-import { Tab, TabsBar, useStyles2 } from '@grafana/ui';
+import { useStyles2, Button } from '@grafana/ui';
 
 import { css } from '@emotion/css';
 
-import { GraphsTab } from './components/GraphsTab';
+import { GraphsView } from './components/GraphsView';
 import { ProcessList } from './components/ProcessList';
 import { prefixRoute } from 'utils/utils.routing';
 import { useTrainingAppStore } from 'utils/state';
@@ -16,7 +16,6 @@ import { useGetProcesses } from 'utils/utils.plugin';
 export const Home = () => {
   const trainingAppStore = useTrainingAppStore();
   const {
-    tab,
     setTab,
     processesQueryStatus,
     setProcessesQueryStatus,
@@ -87,13 +86,8 @@ export const Home = () => {
     fetchProcesses();
   }, [getProcesses, setRenderedRows, setProcessesQueryStatus]);
 
-  const handleTabChange = (newTab: 'table' | 'graphs') => (event: React.MouseEvent<HTMLElement>) => {
-    event.preventDefault();
-    if (newTab === 'graphs' && (!selectedRows || selectedRows.length === 0)) {
-      // Do nothing or show a message that rows need to be selected first
-      return;
-    }
-    history.push(prefixRoute(newTab));
+  const handleViewChange = (view: 'table' | 'graphs') => {
+    history.push(prefixRoute(view));
   };
 
   return (
@@ -106,25 +100,52 @@ export const Home = () => {
         );
       }}
     >
-      <TabsBar>
-        <Tab label="Process list" icon="table" active={tab === 'table'} onChangeTab={handleTabChange('table')} />
-        <Tab
-          label={selectedRows.length > 0 ? `Process graphs (${selectedRows.length})` : `Process graphs`}
-          icon="graph-bar"
-          active={tab === 'graphs'}
-          onChangeTab={handleTabChange('graphs')}
-        />
-      </TabsBar>
-      {tab === 'table' && (
-        <ProcessList
-          rows={renderedRows}
-          processQueryStatus={processesQueryStatus}
-          selectedRows={selectedRows}
-          addSelectedRow={addSelectedRow}
-          removeSelectedRow={removeSelectedRow}
-        />
+      {tabFromUrl === 'table' ? (
+        <>
+          <div className={styles.instructionBox}>
+            <div>
+              Select one or more training processes from the list below.
+              <br />
+              Then, click <strong>View graphs</strong> and a list of graphs will be generated.
+            </div>
+            {selectedRows.length < 1 ? (
+              <Button disabled={true} variant="primary">
+                View graphs (0 processes)
+              </Button>
+            ) : (
+              <Button
+                onClick={() => {
+                  console.log('hey');
+                  handleViewChange('graphs');
+                }}
+                variant="primary"
+              >
+                View graphs ({selectedRows.length} processes)
+              </Button>
+            )}
+          </div>
+
+          <ProcessList
+            rows={renderedRows}
+            processQueryStatus={processesQueryStatus}
+            selectedRows={selectedRows}
+            addSelectedRow={addSelectedRow}
+            removeSelectedRow={removeSelectedRow}
+          />
+        </>
+      ) : (
+        <div>
+          <div className={styles.instructionBox}>
+          <div>
+              Review graphs below for the processes you selected
+            </div>            
+            <Button onClick={() => handleViewChange('table')}>
+              Back to process list
+            </Button>
+          </div>
+          <GraphsView rows={selectedRows} />
+        </div>
       )}
-      {tab === 'graphs' && <GraphsTab rows={selectedRows} />}
     </PluginPage>
   );
 };
@@ -152,6 +173,13 @@ const getStyles = (theme: GrafanaTheme2) => {
       font-weight: 500;
       line-height: 1.2;
       color: ${theme.colors.text.primary};
+    `,
+    instructionBox: css`
+      display: flex;
+      justify-content: space-between;
+      padding: 20px;
+      background-color: rgba(61, 113, 217, 0.15);
+      border: solid 1px rgba(110, 159, 255, 0.25);
     `,
   };
 };
