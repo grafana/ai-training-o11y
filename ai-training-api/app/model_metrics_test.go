@@ -264,3 +264,108 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestGetModelMetrics(t *testing.T) {
+    db, cleanup := setupTestDB(t)
+    defer cleanup()
+
+    app := &testApp{
+        App: App{_db: db},
+    }
+
+    // Test case 1: Basic case with multiple metrics for a single process
+    t.Run("Basic case", func(t *testing.T) {
+        processID := uuid.New()
+        metrics := []model.ModelMetrics{
+            {ProcessID: processID, MetricName: "accuracy", StepName: "train", Step: 1, MetricValue: "0.75"},
+            {ProcessID: processID, MetricName: "accuracy", StepName: "train", Step: 2, MetricValue: "0.80"},
+            {ProcessID: processID, MetricName: "loss", StepName: "train", Step: 1, MetricValue: "0.5"},
+            {ProcessID: processID, MetricName: "loss", StepName: "train", Step: 2, MetricValue: "0.4"},
+        }
+        insertTestMetrics(t, db, metrics)
+
+        req := setupTestRequest(processID.String())
+		result, err := app.getModelMetrics("0", req)
+		require.NoError(t, err)
+		response, ok := result.(GetModelMetricsResponse)
+		require.True(t, ok)
+	
+		require.Len(t, response, 2) // Two DataFrameWrappers: one for accuracy, one for loss
+		
+		// Print out the entire response for debugging
+		t.Logf("Response: %+v", response)
+	
+		// Check accuracy metrics
+		require.Equal(t, "accuracy", response[0].MetricName)
+		require.Equal(t, "train", response[0].StepName)
+		require.Len(t, response[0].Fields, 2)
+		
+		// Print out the Values slices for debugging
+		t.Logf("Step Values: %+v", response[0].Fields[0].Values)
+		t.Logf("Metric Values: %+v", response[0].Fields[1].Values)
+	
+		require.Equal(t, []interface{}{uint32(1), uint32(2)}, response[0].Fields[0].Values)
+		require.Equal(t, []interface{}{"0.75", "0.80"}, response[0].Fields[1].Values)	
+
+        // Check loss metrics
+        require.Equal(t, "loss", response[1].MetricName)
+        require.Equal(t, "train", response[1].StepName)
+        require.Len(t, response[1].Fields, 2)
+        require.Equal(t, []interface{}{uint32(1), uint32(2)}, response[1].Fields[0].Values)
+        require.Equal(t, []interface{}{"0.5", "0.4"}, response[1].Fields[1].Values)
+    })
+
+    // Test case 2: No metrics in the database
+    t.Run("No metrics", func(t *testing.T) {
+        // Clear the database
+        db.Exec("DELETE FROM model_metrics")
+
+		processID := uuid.New()
+        req := setupTestRequest(processID.String())
+        result, err := app.getModelMetrics("0", req)
+        require.NoError(t, err)
+        response, ok := result.(GetModelMetricsResponse)
+        require.True(t, ok)
+        require.Len(t, response, 0)
+    })
+
+    // Test case 3: Single metric for a process
+    t.Run("Single metric", func(t *testing.T) {
+        // Clear the database
+        db.Exec("DELETE FROM model_metrics")
+
+		processID := uuid.New()
+        metrics := []model.ModelMetrics{
+            {ProcessID: processID, MetricName: "accuracy", StepName: "train", Step: 1, MetricValue: "0.75"},
+        }
+        insertTestMetrics(t, db, metrics)
+
+        req := setupTestRequest(processID.String())
+        result, err := app.getModelMetrics("0", req)
+        require.NoError(t, err)
+        response, ok := result.(GetModelMetricsResponse)
+        require.True(t, ok)
+
+        require.Len(t, response, 1)
+        require.Equal(t, "accuracy", response[0].MetricName)
+        require.Equal(t, "train", response[0].StepName)
+        require.Len(t, response[0].Fields, 2)
+        require.Equal(t, []interface{}{uint32(1)}, response[0].Fields[0].Values)
+        require.Equal(t, []interface{}{"0.75"}, response[0].Fields[1].Values)
+    })
+}
+
+func insertTestMetrics(t *testing.T, db *gorm.DB, metrics []model.ModelMetrics) {
+    for _, metric := range metrics {
+        err := db.Create(&metric).Error
+        require.NoError(t, err)
+    }
+}
+
+func setupTestRequest(processID string) *http.Request {
+    req, _ := http.NewRequest("GET", "/process/"+processID+"/model-metrics", nil)
+    vars := map[string]string{
+        "id": processID,
+    }
+    return mux.SetURLVars(req, vars)
+}

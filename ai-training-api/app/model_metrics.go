@@ -225,17 +225,20 @@ func (a *App) getModelMetrics(tenantID string, req *http.Request) (interface{}, 
 	// Iterate over the metrics and build the series data
     var response GetModelMetricsResponse
     var currentWrapper *DataFrameWrapper
-    var stepSlice, valueSlice *[]interface{}
+    var stepSlice []interface{}
+    var valueSlice []interface{}
 
     for _, row := range rows {
         currSeriesKey := fmt.Sprintf("%s_%s", row.MetricName, row.StepName)
 
         if currentWrapper == nil || currSeriesKey != fmt.Sprintf("%s_%s", currentWrapper.MetricName, currentWrapper.StepName) {
-            // We've encountered a new series, so create a new wrapper
-            newStepSlice := make([]interface{}, 0, 100)  // Pre-allocate with a capacity of 100
-            newValueSlice := make([]interface{}, 0, 100) // Pre-allocate with a capacity of 100
-            stepSlice = &newStepSlice
-            valueSlice = &newValueSlice
+            // We've encountered a new series, so append the current wrapper (if it exists) and create a new one
+            if currentWrapper != nil {
+                response = append(response, *currentWrapper)
+            }
+
+            stepSlice = make([]interface{}, 0)
+            valueSlice = make([]interface{}, 0)
             
             currentWrapper = &DataFrameWrapper{
                 MetricName: row.MetricName,
@@ -244,21 +247,29 @@ func (a *App) getModelMetrics(tenantID string, req *http.Request) (interface{}, 
                     {
                         Name:   row.StepName,
                         Type:   "number",
-                        Values: *stepSlice,
+                        Values: stepSlice,
                     },
                     {
                         Name:   row.MetricName,
                         Type:   "number",
-                        Values: *valueSlice,
+                        Values: valueSlice,
                     },
                 },
             }
-            response = append(response, *currentWrapper)
         }
 
         // Append the step and metricValue to the slices
-        *stepSlice = append(*stepSlice, row.Step)
-        *valueSlice = append(*valueSlice, row.MetricValue)
+        stepSlice = append(stepSlice, row.Step)
+        valueSlice = append(valueSlice, row.MetricValue)
+
+        // Update the Values in the DataFrameWrapper
+        currentWrapper.Fields[0].Values = stepSlice
+        currentWrapper.Fields[1].Values = valueSlice
+    }
+
+    // Append the last wrapper if it exists
+    if currentWrapper != nil {
+        response = append(response, *currentWrapper)
     }
 
     return response, nil
