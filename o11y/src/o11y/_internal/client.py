@@ -169,8 +169,6 @@ class Client:
             ]
         }]
 
-        print(json_data)
-
         url = f'{self.url}/api/v1/process/{self.process_uuid}/model-metrics'
 
         headers = {
