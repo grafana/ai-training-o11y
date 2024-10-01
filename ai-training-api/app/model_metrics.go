@@ -16,7 +16,8 @@ import (
 	"github.com/grafana/ai-training-o11y/ai-training-api/model"
 )
 
-type ModelMetricsRequest struct {
+// Incoming format is an array of these
+type ModelMetricsSeries struct {
 	MetricName string `json:"metric_name"`
 	StepName   string `json:"step_name"`
 	Points     []struct {
@@ -123,8 +124,8 @@ func (a *App) validateProcessExists(ctx context.Context, processID uuid.UUID) er
 	return nil
 }
 
-func parseAndValidateModelMetricsRequest(req *http.Request) ([]ModelMetricsRequest, error) {
-	var metricsData []ModelMetricsRequest
+func parseAndValidateModelMetricsRequest(req *http.Request) ([]ModelMetricsSeries, error) {
+	var metricsData []ModelMetricsSeries
 
 	if err := json.NewDecoder(req.Body).Decode(&metricsData); err != nil {
 		return nil, middleware.ErrBadRequest(err)
@@ -139,7 +140,7 @@ func parseAndValidateModelMetricsRequest(req *http.Request) ([]ModelMetricsReque
 	return metricsData, nil
 }
 
-func validateModelMetricRequest(m *ModelMetricsRequest) error {
+func validateModelMetricRequest(m *ModelMetricsSeries) error {
 	if len(m.MetricName) == 0 || len(m.MetricName) > 32 {
 		return fmt.Errorf("metric name must be between 1 and 32 characters")
 	}
@@ -157,7 +158,7 @@ func validateModelMetricRequest(m *ModelMetricsRequest) error {
 	return nil
 }
 
-func (a *App) saveModelMetrics(ctx context.Context, stackID uint64, processID uuid.UUID, metricsData []ModelMetricsRequest) (int, error) {
+func (a *App) saveModelMetrics(ctx context.Context, stackID uint64, processID uuid.UUID, metricsData []ModelMetricsSeries) (int, error) {
 	var createdCount int
 
 	// Start a transaction
@@ -198,10 +199,6 @@ func (a *App) getModelMetrics(tenantID string, req *http.Request) (interface{}, 
 
 	// Extract and validate ProcessID
 	processID, err := extractAndValidateProcessID(req)
-	if err != nil {
-		return nil, err
-	}
-
 	if err != nil {
 		return nil, err
 	}

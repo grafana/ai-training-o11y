@@ -171,7 +171,7 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 	}{
 		{
 			name: "Valid request",
-			requestBody: []ModelMetricsRequest{
+			requestBody: []ModelMetricsSeries{
 				{
 					MetricName: "accuracy",
 					StepName:   "training",
@@ -188,7 +188,7 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 		},
 		{
 			name: "Invalid metric name",
-			requestBody: []ModelMetricsRequest{
+			requestBody: []ModelMetricsSeries{
 				{
 					MetricName: "",
 					StepName:   "training",
@@ -202,7 +202,7 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 		},
 		{
 			name: "Invalid step name",
-			requestBody: []ModelMetricsRequest{
+			requestBody: []ModelMetricsSeries{
 				{
 					MetricName: "accuracy",
 					StepName:   "",
@@ -216,7 +216,7 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 		},
 		{
 			name: "Invalid step value",
-			requestBody: []ModelMetricsRequest{
+			requestBody: []ModelMetricsSeries{
 				{
 					MetricName: "accuracy",
 					StepName:   "training",
@@ -230,7 +230,7 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 		},
 		{
 			name: "Invalid metric value",
-			requestBody: []ModelMetricsRequest{
+			requestBody: []ModelMetricsSeries{
 				{
 					MetricName: "accuracy",
 					StepName:   "training",
