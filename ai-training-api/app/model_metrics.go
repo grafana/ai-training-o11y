@@ -43,7 +43,7 @@ type DataFrame struct {
 type DataFrameWrapper struct {
     MetricName string   `json:"MetricName"`
     StepName   string   `json:"StepName"`
-    Fields     DataFrame  `json:"fields"`
+    Fields     []DataFrame  `json:"fields"`
 }
 
 type GetModelMetricsResponse []DataFrameWrapper
@@ -194,45 +194,75 @@ func (a *App) saveModelMetrics(ctx context.Context, stackID uint64, processID uu
 	return createdCount, nil
 }
 
-// func (a *App) getModelMetrics(tenantID string, req *http.Request) (GetModelMetricsResponse, error) {
-// 	// Retrieved from DB
-// 	var rows []model.ModelMetrics
-// 	// To return to the client
-// 	var response GetModelMetricsResponse
+func (a *App) getModelMetrics(tenantID string, req *http.Request) (interface{}, error) {
 
-// 	// Extract and validate ProcessID
-// 	processID, err := extractAndValidateProcessID(req)
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	// Extract and validate ProcessID
+	processID, err := extractAndValidateProcessID(req)
+	if err != nil {
+		return nil, err
+	}
 
-// 	if err != nil {
-// 		return nil, err
-// 	}
+	if err != nil {
+		return nil, err
+	}
 
-// 	// Convert tenantID to uint64 for StackID
-// 	stackID, err := strconv.ParseUint(tenantID, 10, 64)
-// 	if err != nil {
-// 		return nil, middleware.ErrBadRequest(fmt.Errorf("invalid tenant ID: %w", err))
-// 	}
+	// Convert tenantID to uint64 for StackID
+	stackID, err := strconv.ParseUint(tenantID, 10, 64)
+	if err != nil {
+		return nil, middleware.ErrBadRequest(fmt.Errorf("invalid tenant ID: %w", err))
+	}
 
-// 	// Retrieve all relevant metrics from the database
-// 	err = a.db(req.Context()).
-// 		Where("stack_id = ? AND process_id = ?", stackID, processID).
-// 		Order("metric_name ASC, step_name ASC, step ASC").
-// 		Find(rows).Error
+	// Retrieved from DB
+	var rows []model.ModelMetrics
 
-// 	if err != nil {
-// 		return nil, fmt.Errorf("error retrieving model metrics: %w", err)
-// 	}
+	// Retrieve all relevant metrics from the database
+	err = a.db(req.Context()).
+		Where("stack_id = ? AND process_id = ?", stackID, processID).
+		Order("metric_name ASC, step_name ASC, step ASC").
+		Find(&rows).Error
 
-// 	var currentDataFrame string
-// 	// Iterate over the metrics and build the series data
-// 	for _, row := range rows {
-// 		seriesKey := fmt.Sprintf("%s_%s", metric.MetricName, metric.StepName)
+	if err != nil {
+		return nil, fmt.Errorf("error retrieving model metrics: %w", err)
+	}
 
-// 		// Append the point to the appropriate series
-// 	}
+	// Iterate over the metrics and build the series data
+    var response GetModelMetricsResponse
+    var currentWrapper *DataFrameWrapper
+    var stepSlice, valueSlice *[]interface{}
 
-// 	return response, nil
-// }
+    for _, row := range rows {
+        currSeriesKey := fmt.Sprintf("%s_%s", row.MetricName, row.StepName)
+
+        if currentWrapper == nil || currSeriesKey != fmt.Sprintf("%s_%s", currentWrapper.MetricName, currentWrapper.StepName) {
+            // We've encountered a new series, so create a new wrapper
+            newStepSlice := make([]interface{}, 0, 100)  // Pre-allocate with a capacity of 100
+            newValueSlice := make([]interface{}, 0, 100) // Pre-allocate with a capacity of 100
+            stepSlice = &newStepSlice
+            valueSlice = &newValueSlice
+            
+            currentWrapper = &DataFrameWrapper{
+                MetricName: row.MetricName,
+                StepName:   row.StepName,
+                Fields: []DataFrame{
+                    {
+                        Name:   row.StepName,
+                        Type:   "number",
+                        Values: *stepSlice,
+                    },
+                    {
+                        Name:   row.MetricName,
+                        Type:   "number",
+                        Values: *valueSlice,
+                    },
+                },
+            }
+            response = append(response, *currentWrapper)
+        }
+
+        // Append the step and metricValue to the slices
+        *stepSlice = append(*stepSlice, row.Step)
+        *valueSlice = append(*valueSlice, row.MetricValue)
+    }
+
+    return response, nil
+}

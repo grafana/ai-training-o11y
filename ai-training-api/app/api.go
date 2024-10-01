@@ -33,7 +33,7 @@ func (app *App) registerAPI(router *mux.Router) {
 	router.HandleFunc("/processes", requestMiddleware(app.listProcess)).Methods("GET")
 	router.HandleFunc("/process/{id}/update-metadata", requestMiddleware(app.updateProcessMetadata)).Methods("POST")
 	router.HandleFunc("/process/{id}/model-metrics", requestMiddleware(app.addModelMetrics)).Methods("POST")
-	// router.HandleFunc("/process/{id}/model-metrics", requestMiddleware(app.getModelMetrics)).Methods("GET")
+	router.HandleFunc("/process/{id}/model-metrics", requestMiddleware(app.getModelMetrics)).Methods("GET")
 	router.HandleFunc("/group/new", requestMiddleware(app.registerNewGroup)).Methods("POST")
 	router.HandleFunc("/group/{id}", requestMiddleware(app.getGroup)).Methods("GET")
 	router.HandleFunc("/groups", requestMiddleware(app.getGroups)).Methods("GET")
