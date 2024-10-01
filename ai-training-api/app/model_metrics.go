@@ -22,13 +22,13 @@ type ModelMetricsSeries struct {
 	StepName   string `json:"step_name"`
 	Points     []struct {
 		Step  uint32 `json:"step"`
-		Value string `json:"value"`
+		Value json.Number `json:"value"`
 	} `json:"points"`
 }
 
 type AddModelMetricsResponse struct {
     Message        string `json:"message"`
-    MetricsCreated int    `json:"metricsCreated"`
+    MetricsCreated uint32    `json:"metricsCreated"`
 }
 
 // This is for return
@@ -125,37 +125,45 @@ func (a *App) validateProcessExists(ctx context.Context, processID uuid.UUID) er
 }
 
 func parseAndValidateModelMetricsRequest(req *http.Request) ([]ModelMetricsSeries, error) {
-	var metricsData []ModelMetricsSeries
+    var metricsData []ModelMetricsSeries
 
-	if err := json.NewDecoder(req.Body).Decode(&metricsData); err != nil {
-		return nil, middleware.ErrBadRequest(err)
-	}
+    decoder := json.NewDecoder(req.Body)
 
-	for _, metric := range metricsData {
-		if err := validateModelMetricRequest(&metric); err != nil {
-			return nil, middleware.ErrBadRequest(err)
-		}
-	}
+    if err := decoder.Decode(&metricsData); err != nil {
+        return nil, middleware.ErrBadRequest(fmt.Errorf("invalid JSON: %v", err))
+    }
 
-	return metricsData, nil
+	fmt.Println(metricsData)
+
+    for _, metric := range metricsData {
+        if err := validateModelMetricRequest(&metric); err != nil {
+            return nil, middleware.ErrBadRequest(err)
+        }
+    }
+
+    return metricsData, nil
 }
 
 func validateModelMetricRequest(m *ModelMetricsSeries) error {
-	if len(m.MetricName) == 0 || len(m.MetricName) > 32 {
-		return fmt.Errorf("metric name must be between 1 and 32 characters")
-	}
-	if len(m.StepName) == 0 || len(m.StepName) > 32 {
-		return fmt.Errorf("step name must be between 1 and 32 characters")
-	}
-	for _, point := range m.Points {
-		if point.Step == 0 {
-			return fmt.Errorf("step must be a positive number")
-		}
-		if len(point.Value) == 0 || len(point.Value) > 64 {
-			return fmt.Errorf("metric value must be between 1 and 64 characters")
-		}
-	}
-	return nil
+    if len(m.MetricName) == 0 || len(m.MetricName) > 32 {
+        return fmt.Errorf("metric name must be between 1 and 32 characters")
+    }
+    if len(m.StepName) == 0 || len(m.StepName) > 32 {
+        return fmt.Errorf("step name must be between 1 and 32 characters")
+    }
+    for _, point := range m.Points {
+        if point.Step == 0 {
+            return fmt.Errorf("step must be a positive number")
+        }
+        if point.Value.String() == "" {
+            return fmt.Errorf("metric value cannot be empty")
+        }
+        // Validate that Value is a valid number
+        if _, err := point.Value.Float64(); err != nil {
+            return fmt.Errorf("invalid numeric value: %v", err)
+        }
+    }
+    return nil
 }
 
 func (a *App) saveModelMetrics(ctx context.Context, stackID uint64, processID uuid.UUID, metricsData []ModelMetricsSeries) (int, error) {
@@ -175,7 +183,7 @@ func (a *App) saveModelMetrics(ctx context.Context, stackID uint64, processID uu
 				MetricName:  metricData.MetricName,
 				StepName:    metricData.StepName,
 				Step:        point.Step,
-				MetricValue: point.Value,
+				MetricValue: point.Value.String(),
 			}
 
 			// Save to database

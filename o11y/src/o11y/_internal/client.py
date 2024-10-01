@@ -23,6 +23,7 @@ class Client:
         self.url = None
         self.token = None
         self.tenant_id = None
+        self.step = 1
         login_string = os.environ.get('GF_AI_TRAINING_CREDS')
         self.set_credentials(login_string)
 
@@ -76,6 +77,7 @@ class Client:
         if self.process_uuid:
             self.process_uuid = None
             self.user_metadata = None
+            self.step = 1
 
         if not self.tenant_id or not self.token:
             logger.error("User ID or token is not set.")
@@ -146,35 +148,28 @@ class Client:
         if not self.process_uuid:
             logger.error("No process registered, unable to send logs")
             return False
-        
-        timestamp = str(time.time_ns())
 
-        metadata: Dict[str, Any] = {
-            "process_uuid": self.process_uuid,
-            "type": "model-metrics"
-        }
+        if not x_axis:
+            x_axis = {
+                "step": self.step
+            }
+            self.step += 1
 
-        if x_axis:
-            x_key = list(x_axis.keys())[0]
-            metadata['x_axis'] = x_key
-            metadata['x_value'] = str(x_axis[x_key])
+        step_name, step_value = next(iter(x_axis.items()))
+        metric_name, metric_value = next(iter(log.items()))
 
-        json_data = {
-            "streams": [
+        json_data = [{
+            "metric_name": metric_name,
+            "step_name": step_name,
+            "points": [
                 {
-                    "stream": {
-                        "job": "o11y",
-                    },
-                    "values": [
-                        [
-                            timestamp,
-                            json.dumps(log),
-                            metadata,
-                        ]
-                    ]
+                    "step": step_value,
+                    "value": metric_value
                 }
             ]
-        }
+        }]
+
+        print(json_data)
 
         url = f'{self.url}/api/v1/process/{self.process_uuid}/model-metrics'
 

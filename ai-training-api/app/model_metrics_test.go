@@ -177,7 +177,7 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 					StepName:   "training",
 					Points: []struct {
 						Step  uint32 `json:"step"`
-						Value string `json:"value"`
+						Value json.Number `json:"value"`
 					}{
 						{Step: 1, Value: "0.75"},
 						{Step: 2, Value: "0.85"},
@@ -194,7 +194,7 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 					StepName:   "training",
 					Points: []struct {
 						Step  uint32 `json:"step"`
-						Value string `json:"value"`
+						Value json.Number `json:"value"`
 					}{{Step: 1, Value: "0.75"}},
 				},
 			},
@@ -208,7 +208,7 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 					StepName:   "",
 					Points: []struct {
 						Step  uint32 `json:"step"`
-						Value string `json:"value"`
+						Value json.Number `json:"value"`
 					}{{Step: 1, Value: "0.75"}},
 				},
 			},
@@ -222,25 +222,43 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 					StepName:   "training",
 					Points: []struct {
 						Step  uint32 `json:"step"`
-						Value string `json:"value"`
+						Value json.Number `json:"value"`
 					}{{Step: 0, Value: "0.75"}},
 				},
 			},
 			expectedErrMsg: "step must be a positive number",
 		},
 		{
-			name: "Invalid metric value",
-			requestBody: []ModelMetricsSeries{
-				{
-					MetricName: "accuracy",
-					StepName:   "training",
-					Points: []struct {
-						Step  uint32 `json:"step"`
-						Value string `json:"value"`
-					}{{Step: 1, Value: ""}},
+			name: "Invalid metric value (empty string)",
+			requestBody: []interface{}{
+				map[string]interface{}{
+					"metric_name": "accuracy",
+					"step_name":   "training",
+					"points": []interface{}{
+						map[string]interface{}{
+							"step":  1,
+							"value": "",
+						},
+					},
 				},
 			},
-			expectedErrMsg: "metric value must be between 1 and 64 characters",
+			expectedErrMsg: "invalid JSON: json: invalid number literal, trying to unmarshal \"\\\"\\\"\" into Number",
+		},
+		{
+			name: "Invalid metric value (not a number)",
+			requestBody: []interface{}{
+				map[string]interface{}{
+					"metric_name": "accuracy",
+					"step_name":   "training",
+					"points": []interface{}{
+						map[string]interface{}{
+							"step":  1,
+							"value": "not a number",
+						},
+					},
+				},
+			},
+			expectedErrMsg: "invalid JSON: json: invalid number literal, trying to unmarshal \"\\\"not a number\\\"\" into Number",
 		},
 	}
 
@@ -248,19 +266,25 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			body, err := json.Marshal(tt.requestBody)
 			require.NoError(t, err)
-
+	
 			req, err := http.NewRequest("POST", "/process/123/model-metrics", bytes.NewBuffer(body))
 			require.NoError(t, err)
-
+	
 			result, err := parseAndValidateModelMetricsRequest(req)
-
+	
 			if tt.expectedErrMsg != "" {
-				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.expectedErrMsg)
+				if err == nil {
+					t.Errorf("Expected error containing '%s', but got nil error", tt.expectedErrMsg)
+				} else {
+					assert.Contains(t, err.Error(), tt.expectedErrMsg)
+				}
 			} else {
 				assert.NoError(t, err)
 				assert.Len(t, result, tt.expectedLen)
 			}
+	
+			// Add this line for debugging
+			t.Logf("Test case '%s': error = %v, result = %+v", tt.name, err, result)
 		})
 	}
 }
