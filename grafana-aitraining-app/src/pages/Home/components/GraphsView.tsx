@@ -1,10 +1,9 @@
-import React, { useEffect, useRef } from 'react';
-import { useProcessQueries } from 'hooks/useProcessQueries';
-import { useTrainingAppStore, RowData } from 'utils/state';
-import { reshapeModelMetrics } from 'utils/reshapeModelMetrics';
+import React, { useEffect } from 'react';
+import { RowData } from 'utils/state';
 import { SceneGraph } from './SceneGraph';
-import { PanelData, LoadingState, dateTime, TimeRange } from '@grafana/data';
-import { ControlledCollapse } from '@grafana/ui';
+import { PanelData, LoadingState, dateTime, TimeRange, FieldType } from '@grafana/data';
+// import { ControlledCollapse } from '@grafana/ui';
+import { useGetModelMetrics } from 'utils/utils.plugin';
 
 export interface MetricPanel {
   pluginId: string;
@@ -17,134 +16,209 @@ interface GraphsProps {
 }
 
 export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
-  const { lokiQueryStatus, lokiQueryData, organizedLokiData, resetLokiResults, setOrganizedLokiData } =
-    useTrainingAppStore();
-  const { isReady, runQueries } = useProcessQueries();
-  const shouldRunQueries = useRef(true);
+  const getModelMetrics = useGetModelMetrics();
 
   useEffect(() => {
-    if (isReady && rows.length > 0 && shouldRunQueries.current) {
-      shouldRunQueries.current = false;
-      resetLokiResults();
-      runQueries();
+    if (rows.length > 0) {
+      const organizedData: any = {};
+      rows.forEach((row) => {
+        const processUuid = row.process_uuid;
+        getModelMetrics(processUuid).then((response) => {
+          const data = response.data;
+          console.log(data);
+          // data should be an array, we want to loop over it
+          for (const item of data) {
+            const metricName = item?.MetricName;
+            const stepName = item?.StepName;
+            // If the MetricName has a slash in it, section is the first part of the MetricName
+            // and key is the second part
+            let section = "general";
+            if (metricName.includes('/')) {
+              section = metricName.split('/')[0];
+            }
+
+            // Init section if empty
+            organizedData[section] = organizedData[section] ?? {};
+            // Init metric if empty
+            organizedData[section][metricName] = organizedData[section][metricName] ?? {};
+            // Init step if empty
+            organizedData[section][metricName][stepName] = organizedData[section][metricName][stepName] ?? [];
+            // Append the data
+            organizedData[section][metricName][stepName].push(item);
+
+            console.log("Organized Data");
+            console.log(organizedData);
+          }
+        });
+      });
     }
-  }, [isReady, rows, resetLokiResults, runQueries]);
+  }, [rows, getModelMetrics]);
 
-  useEffect(() => {
-    shouldRunQueries.current = true;
-  }, [rows]);
-
-  useEffect(() => {
-    if (lokiQueryStatus === 'success' && Object.keys(lokiQueryData).length > 0) {
-      const organized = reshapeModelMetrics(lokiQueryData);
-      setOrganizedLokiData(organized);
-    }
-  }, [lokiQueryStatus, lokiQueryData, setOrganizedLokiData]);
-
-  if (!isReady) {
-    return <div>Loading...</div>;
+  interface Dataframe {
+    // eslint-disable-next-line @typescript-eslint/array-type
+    fields: {
+      name: string;
+      type: string;
+      values: number[];
+    }[];
   }
-
-  if (lokiQueryStatus === 'loading') {
-    return (
-      <div>
-        Running...
-      </div>
-    );
+  
+  interface Panel {
+    metricName: string;
+    dataframes: Dataframe[];
   }
-
-  if (!organizedLokiData || !organizedLokiData.data || Object.keys(organizedLokiData.data).length === 0) {
-    return <div>No data available</div>;
+  
+  interface Section {
+    sectionName: string;
+    panels: Panel[];
   }
+  
+  const testData: Section[] = ['train', 'test'].map((sectionName: string) => {
+    return {
+      sectionName,
+      panels: [
+        {
+          metricName: `${sectionName}/loss`,
+          dataframes: [
+            {
+              fields: [
+                {
+                  name: 'step',
+                  type: 'number',
+                  values: [1, 2, 3],
+                },
+                {
+                  name: 'value',
+                  type: 'number',
+                  values: [0.1, 0.2, 0.3],
+                }
+              ]
+            }
+          ],
+        },
+        {
+          metricName: `${sectionName}/acc`,
+          dataframes: [
+            {
+              fields: [
+                {
+                  name: 'step',
+                  type: 'number',
+                  values: [1, 2, 3],
+                },
+                {
+                  name: 'value',
+                  type: 'number',
+                  values: [0.7, 0.8, 0.9], // Changed values for accuracy
+                }
+              ]
+            }
+          ],
+        },
+      ]
+    };
+  });
 
-  const startTime = organizedLokiData.meta.startTime ? dateTime(organizedLokiData.meta.startTime) : dateTime();
-  const endTime = organizedLokiData.meta.endTime ? dateTime(organizedLokiData.meta.endTime) : dateTime();
+  console.log("testData");
+  console.log(testData);
 
-  const tmpTimeRange: TimeRange = {
-    from: startTime,
-    to: endTime,
-    raw: {
-      from: startTime.toISOString(),
-      to: endTime.toISOString(),
-    },
-  };
-
-  const createPanelList = (section: string): MetricPanel[] => {
-    if (!organizedLokiData.meta.sections[section]) {
-      return [];
-    }
-    return organizedLokiData.meta.sections[section].map((key: string) => {
-      if (!organizedLokiData.data[section] || !organizedLokiData.data[section][key]) {
-        return {
-          pluginId: 'xyplot',
-          title: key,
-          data: {
-            state: LoadingState.Error,
-            series: [],
-            timeRange: tmpTimeRange,
-          },
-        };
-      }
+  const createPanelList = (section: Section): MetricPanel[] => {
+    const dummyStart = dateTime(new Date('2021-09-04T00:00:00Z'));
+    const dummyEnd = dateTime(new Date('2021-09-04T00:10:00Z'));
+  
+    const dummyTimeRange: TimeRange = {
+      from: dummyStart,
+      to: dummyEnd,
+      raw: {
+        from: dummyStart.toISOString(),
+        to: dummyEnd.toISOString(),
+      },
+    };
+    return section.panels.map((data: any) => {
       const panel: PanelData = {
         state: LoadingState.Done,
-        timeRange: tmpTimeRange,
-        series: [organizedLokiData.data[section][key]],
+        timeRange: dummyTimeRange,
+        series: data.dataframes,
       };
       return {
         pluginId: 'trend',
-        title: key,
+        title: data.metricName,
         data: panel,
       };
     });
   };
 
-  return (
-    <div style={{ marginTop: '10px' }}>
-      {organizedLokiData.meta.sections && Object.entries(organizedLokiData.meta.sections).map(([section, keys]) => (
-        <ControlledCollapse
-          key={section}
-          isOpen={true}
-          label={`${section}`}
-        >
-          <SceneGraph panels={createPanelList(section)} />
-        </ControlledCollapse>
-      ))}
+  const testSection: Section = {
+    sectionName: "testSection",
+    panels: [
+      {
+        metricName: "test/metric",
+        dataframes: [
+          {
+            fields: [
+              {
+                name: "metric",
+                type: "number",
+                values: [1, 2, 3]
+              },
+              {
+                name: "value",
+                type: "number",
+                values: [10, 20, 30]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+  
+  // Test the function
+  console.log("testSection");
+  const result = createPanelList(testSection);
+  console.log(JSON.stringify(result, null, 2));
 
-      {/* Debug section (hidden) */}
-      <div style={{ display: 'none' }}>
-        <button
-          onClick={() => {
-            resetLokiResults();
-            shouldRunQueries.current = true;
-          }}
-        >
-          Reset Results
-        </button>
+  const testPanel = {
+    title: 'Test Panel',
+    pluginId: 'xychart',
+    data: {
+      state: LoadingState.Done,
+      series: [
+        {
+          fields: [
+            { 
+              name: 'value', 
+              type: FieldType.number,
+              values: [1, 2, 3],
+              config: {}
+            },
+            { 
+              name: 'value', 
+              type: FieldType.number,
+              values: [10, 20, 30],
+              config: {}
+            }
+          ],
+          length: 3 
+        }
+      ],
+      timeRange: {
+        from: dateTime(new Date('2021-09-04T00:00:00Z')),
+        to: dateTime(new Date('2021-09-04T00:10:00Z')),
+        raw: {
+          from: '2021-09-04T00:00:00Z',
+          to: '2021-09-04T00:10:00Z',
+        }
+      }
+    }
+  }
 
-        <div style={{ marginBottom: '20px' }}>
-          <h3>Organized Data:</h3>
-          {organizedLokiData ? (
-            <pre>{JSON.stringify(organizedLokiData, null, 2)}</pre>
-          ) : (
-            <p>No organized data available</p>
-          )}
-        </div>
+  console.log("testPanel");
+  console.log(testPanel);
 
-        <div style={{ marginBottom: '20px' }}>
-          <h3>Query Data:</h3>
-          {Object.keys(lokiQueryData).map((key) => (
-            <React.Fragment key={key}>
-              <h4>Results for process: {key}</h4>
-              <pre>{JSON.stringify(lokiQueryData[key].lokiData?.series[0].fields, null, 2)}</pre>
-            </React.Fragment>
-          ))}
-        </div>
-
-        <div>
-          <h3>Selected Rows:</h3>
-          <pre>{JSON.stringify(rows, null, 2)}</pre>
-        </div>
-      </div>
-    </div>
-  );
-};
+return (
+  <div>
+    <SceneGraph panels={[testPanel]} />
+  </div>
+);
+}

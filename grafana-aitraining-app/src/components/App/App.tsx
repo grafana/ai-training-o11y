@@ -10,7 +10,7 @@ import { ReactRouter5Adapter } from 'use-query-params/adapters/react-router-5';
 import { PluginPropsContext } from '../../utils/utils.plugin';
 import { Routes } from '../Routes';
 import { TrainingApiDatasource } from '../../datasource/Datasource';
-import { makeProcessGetter } from 'utils/api';
+import { doRequest, makeProcessGetter } from 'utils/api';
 
 export class App extends React.PureComponent<AppRootProps> {
   componentDidMount() {
@@ -31,6 +31,14 @@ export class App extends React.PureComponent<AppRootProps> {
 
   getProcesses = makeProcessGetter(this.props.meta.id);
 
+  getModelMetrics = (processUuid: string) => {
+    const response = doRequest({
+      url: `/api/plugins/${this.props.meta.id}/resources/metadata/api/v1/process/${processUuid}/model-metrics`,
+      method: 'GET',
+    });
+    return response;
+  }
+
   render() {
     return (
       <QueryParamProvider
@@ -40,7 +48,7 @@ export class App extends React.PureComponent<AppRootProps> {
           objectToSearchString: stringify,
         }}
       >
-        <PluginPropsContext.Provider value={{ ...this.props, getProcesses: this.getProcesses }}>
+        <PluginPropsContext.Provider value={{ ...this.props, getProcesses: this.getProcesses, getModelMetrics: this.getModelMetrics }}>
           <Routes />
         </PluginPropsContext.Provider>
       </QueryParamProvider>
