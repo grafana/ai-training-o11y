@@ -47,7 +47,7 @@ export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
             // Init step if empty
             organizedData[section][metricName][stepName] = organizedData[section][metricName][stepName] ?? [];
             // Append the data
-            organizedData[section][metricName][stepName].push(item);
+            organizedData[section][metricName][stepName].push({...item, config: {}});
 
             console.log("Organized Data");
             console.log(organizedData);
