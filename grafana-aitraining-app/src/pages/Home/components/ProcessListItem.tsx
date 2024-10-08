@@ -23,7 +23,7 @@ export const ProcessListItem: React.FC<ProcessListItemProps> = ({
   const styles = useStyles2(getStyles);
   const startDate = new Date(process.start_time).toLocaleDateString();
   const startTime = new Date(process.start_time).toLocaleTimeString();
-  const endTime = process.end_time !== undefined ? new Date(process.end_time).toLocaleTimeString() : '';
+  // const endTime = process.end_time !== undefined ? new Date(process.end_time).toLocaleTimeString() : '';
 
   return (
     <div key={process.process_uuid}>
@@ -42,7 +42,7 @@ export const ProcessListItem: React.FC<ProcessListItemProps> = ({
         </div>
         <div>{process.process_uuid}</div>
         <div className={styles.details}>
-        {process.project} | {startDate}: {startTime} to {endTime} 
+        {process.project} | {startDate}: {startTime}
         </div>
       </div>
     </div>
