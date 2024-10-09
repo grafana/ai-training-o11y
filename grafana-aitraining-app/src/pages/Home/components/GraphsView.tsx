@@ -1,7 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { useProcessQueries } from 'hooks/useProcessQueries';
-import { useTrainingAppStore, RowData } from 'utils/state';
-import { reshapeModelMetrics } from 'utils/reshapeModelMetrics';
+import React, { useEffect } from 'react';
+import { RowData } from 'utils/state';
 import { SceneGraph } from './SceneGraph';
 import { PanelData, LoadingState, dateTime, TimeRange } from '@grafana/data';
 import { ControlledCollapse } from '@grafana/ui';
@@ -20,87 +18,43 @@ interface GraphsProps {
 export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
   // WIP:
   const getModelMetrics = useGetModelMetrics();
+  const [organizedData, setOrganizedData] = React.useState();
 
   useEffect(() => {
     if (rows.length > 0) {
-      const organizedData: any = {};
-      rows.forEach((row) => {
-        const processUuid = row.process_uuid;
-        getModelMetrics(processUuid).then((response) => {
+      const newData: any = {};
+      const promises = rows.map((row) => {
+        return getModelMetrics(row.process_uuid).then((response) => {
           const data = response.data;
-          console.log(data);
-          // data should be an array, we want to loop over it
           for (const item of data) {
             const metricName = item?.MetricName;
             const stepName = item?.StepName;
-            // If the MetricName has a slash in it, section is the first part of the MetricName
-            // and key is the second part
-            let section = "general";
-            if (metricName.includes('/')) {
-              section = metricName.split('/')[0];
-            }
-
-            // Init section if empty
-            organizedData[section] = organizedData[section] ?? {};
-            // Init metric if empty
-            organizedData[section][metricName] = organizedData[section][metricName] ?? {};
-            // Init step if empty
-            organizedData[section][metricName][stepName] = organizedData[section][metricName][stepName] ?? [];
-            // Append the data
-            organizedData[section][metricName][stepName].push({...item, config: {}});
-
-            console.log("Organized Data");
-            console.log(organizedData);
+            let section = metricName.includes('/') ? metricName.split('/')[0] : "general";
+  
+            newData[section] = newData[section] ?? {};
+            newData[section][metricName] = newData[section][metricName] ?? {};
+            newData[section][metricName][stepName] = newData[section][metricName][stepName] ?? [];
+  
+            const itemWithConfig = {
+              ...item,
+              fields: item.fields.map((field: any) => ({
+                ...field,
+                config: {}
+              }))
+            };
+            newData[section][metricName][stepName].push(itemWithConfig);
           }
         });
       });
+  
+      Promise.all(promises).then(() => {
+        setOrganizedData(newData);
+      });
     }
   }, [rows, getModelMetrics]);
-  // End WIP
 
-
-  const { lokiQueryStatus, lokiQueryData, organizedLokiData, resetLokiResults, setOrganizedLokiData } =
-    useTrainingAppStore();
-  const { isReady, runQueries } = useProcessQueries();
-  const shouldRunQueries = useRef(true);
-
-  useEffect(() => {
-    if (isReady && rows.length > 0 && shouldRunQueries.current) {
-      shouldRunQueries.current = false;
-      resetLokiResults();
-      runQueries();
-    }
-  }, [isReady, rows, resetLokiResults, runQueries]);
-
-  useEffect(() => {
-    shouldRunQueries.current = true;
-  }, [rows]);
-
-  useEffect(() => {
-    if (lokiQueryStatus === 'success' && Object.keys(lokiQueryData).length > 0) {
-      const organized = reshapeModelMetrics(lokiQueryData);
-      setOrganizedLokiData(organized);
-    }
-  }, [lokiQueryStatus, lokiQueryData, setOrganizedLokiData]);
-
-  if (!isReady) {
-    return <div>Loading...</div>;
-  }
-
-  if (lokiQueryStatus === 'loading') {
-    return (
-      <div>
-        Running...
-      </div>
-    );
-  }
-
-  if (!organizedLokiData || !organizedLokiData.data || Object.keys(organizedLokiData.data).length === 0) {
-    return <div>No data available</div>;
-  }
-
-  const startTime = organizedLokiData.meta.startTime ? dateTime(organizedLokiData.meta.startTime) : dateTime();
-  const endTime = organizedLokiData.meta.endTime ? dateTime(organizedLokiData.meta.endTime) : dateTime();
+  const startTime = dateTime();
+  const endTime = dateTime();
 
   const tmpTimeRange: TimeRange = {
     from: startTime,
@@ -112,11 +66,21 @@ export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
   };
 
   const createPanelList = (section: string): MetricPanel[] => {
-    if (!organizedLokiData.meta.sections[section]) {
+    console.log(`Creating panel list for section: ${section}`);
+  
+    if (!organizedData || !organizedData[section]) {
+      console.log(`No data for section ${section}`);
       return [];
     }
-    return organizedLokiData.meta.sections[section].map((key: string) => {
-      if (!organizedLokiData.data[section] || !organizedLokiData.data[section][key]) {
+  
+    return Object.entries(organizedData[section]).map(([key, metricData]: any) => {
+      console.log(`Processing metric: ${key}`);
+  
+      const stepDataKey = Object.keys(metricData)[0];
+      const stepData = metricData[stepDataKey];
+  
+      if (!stepData || !stepData[0] || !stepData[0].fields) {
+        console.log(`Invalid step data for metric ${key}`);
         return {
           pluginId: 'xyplot',
           title: key,
@@ -127,13 +91,23 @@ export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
           },
         };
       }
+  
+      const fieldsLength = stepData[0].fields[0].values.length;
+  
       const panel: PanelData = {
         state: LoadingState.Done,
         timeRange: tmpTimeRange,
-        series: [organizedLokiData.data[section][key]],
+        series: [{
+          name: key,
+          fields: stepData[0].fields,
+          length: fieldsLength,
+        }],
       };
+  
+      console.log(`Created panel for metric ${key}:`, JSON.stringify(panel, null, 2));
+  
       return {
-        pluginId: 'trend',
+        pluginId: 'xychart',
         title: key,
         data: panel,
       };
@@ -142,51 +116,20 @@ export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
 
   return (
     <div style={{ marginTop: '10px' }}>
-      {organizedLokiData.meta.sections && Object.entries(organizedLokiData.meta.sections).map(([section, keys]) => (
-        <ControlledCollapse
-          key={section}
-          isOpen={true}
-          label={`${section}`}
-        >
-          <SceneGraph panels={createPanelList(section)} />
-        </ControlledCollapse>
-      ))}
-
-      {/* Debug section (hidden) */}
-      <div style={{ display: 'none' }}>
-        <button
-          onClick={() => {
-            resetLokiResults();
-            shouldRunQueries.current = true;
-          }}
-        >
-          Reset Results
-        </button>
-
-        <div style={{ marginBottom: '20px' }}>
-          <h3>Organized Data:</h3>
-          {organizedLokiData ? (
-            <pre>{JSON.stringify(organizedLokiData, null, 2)}</pre>
-          ) : (
-            <p>No organized data available</p>
-          )}
-        </div>
-
-        <div style={{ marginBottom: '20px' }}>
-          <h3>Query Data:</h3>
-          {Object.keys(lokiQueryData).map((key) => (
-            <React.Fragment key={key}>
-              <h4>Results for process: {key}</h4>
-              <pre>{JSON.stringify(lokiQueryData[key].lokiData?.series[0].fields, null, 2)}</pre>
-            </React.Fragment>
-          ))}
-        </div>
-
-        <div>
-          <h3>Selected Rows:</h3>
-          <pre>{JSON.stringify(rows, null, 2)}</pre>
-        </div>
-      </div>
+      {organizedData && Object.keys(organizedData).map((section) => {
+        console.log(`Rendering section: ${section}`);
+        const panels = createPanelList(section);
+        console.log(`Panels for section ${section}:`, panels);
+        return (
+          <ControlledCollapse
+            key={section}
+            isOpen={true}
+            label={`${section}`}
+          >
+            <SceneGraph panels={panels} />
+          </ControlledCollapse>
+        );
+      })}
     </div>
   );
 };
