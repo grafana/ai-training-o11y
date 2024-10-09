@@ -115,7 +115,6 @@ export const Home = () => {
             ) : (
               <Button
                 onClick={() => {
-                  console.log('hey');
                   handleViewChange('graphs');
                 }}
                 variant="primary"
