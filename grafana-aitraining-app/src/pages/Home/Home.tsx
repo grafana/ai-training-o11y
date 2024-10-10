@@ -64,9 +64,12 @@ export const Home = () => {
               case 404:
                 setProcessesQueryStatus('notFound');
                 break;
-              case 500 || 502:
-                setProcessesQueryStatus('serverError');
-                break;
+                case 500:
+                  setProcessesQueryStatus('serverError');
+                  break;
+                case 502:
+                  setProcessesQueryStatus('serverError');
+                  break;
               default:
                 setProcessesQueryStatus('error');
             }
@@ -115,7 +118,6 @@ export const Home = () => {
             ) : (
               <Button
                 onClick={() => {
-                  console.log('hey');
                   handleViewChange('graphs');
                 }}
                 variant="primary"
