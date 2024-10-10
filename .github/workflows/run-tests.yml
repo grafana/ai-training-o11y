@@ -89,6 +89,9 @@ jobs:
       run: pip install hatch
 
     - name: Run tests
+      env:
+        TARGET_OS: linux
+        TARGET_ARCH: amd64
       working-directory: './o11y'
       run: hatch test
 
