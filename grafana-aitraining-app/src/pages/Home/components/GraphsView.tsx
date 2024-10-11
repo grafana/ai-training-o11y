@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { RowData } from 'utils/state';
+import { RowData, useTrainingAppStore } from 'utils/state';
 import { SceneGraph } from './SceneGraph';
 import { PanelData, LoadingState, dateTime, TimeRange, DataFrame } from '@grafana/data';
 import { ControlledCollapse } from '@grafana/ui';
@@ -18,42 +18,38 @@ interface GraphsProps {
 export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
   // WIP:
   const getModelMetrics = useGetModelMetrics();
-  const [organizedData, setOrganizedData] = React.useState();
+  const { organizedData, appendToOrganizedData } = useTrainingAppStore();
+  const [ loading, setLoading ] = React.useState<LoadingState>(LoadingState.NotStarted);
 
   useEffect(() => {
     if (rows.length > 0) {
-      const newData: any = {};
+      setLoading(LoadingState.Loading);
       const promises = rows.map((row) => {
         return getModelMetrics(row.process_uuid).then((response) => {
-          const data = response.data;
-          for (const item of data) {
-            const metricName = item?.MetricName;
-            const stepName = item?.StepName;
-            let section = metricName.includes('/') ? metricName.split('/')[0] : "general";
-  
-            newData[section] = newData[section] ?? {};
-            newData[section][metricName] = newData[section][metricName] ?? {};
-            newData[section][metricName][stepName] = newData[section][metricName][stepName] ?? [];
-  
-            const itemWithConfig = {
+          response.data.forEach((item: any) => {
+            const metricName = item.MetricName;
+            const stepName = item.StepName;
+            const section = metricName.includes('/') ? metricName.split('/')[0] : "general";
+
+            const itemWithConfig: any = {
               ...item,
               fields: item.fields.map((field: any) => ({
                 ...field,
-                name: field.name === metricName ? row.process_uuid : field.name,
                 length: field.values.length,
-                config: {}
+                config: field.name === metricName ? {displayName: row.process_uuid } : {}
               }))
             };
-            newData[section][metricName][stepName].push(itemWithConfig);
-          }
+
+            appendToOrganizedData(section, metricName, stepName, itemWithConfig);
+          });
         });
       });
-  
+
       Promise.all(promises).then(() => {
-        setOrganizedData(newData);
+        setLoading(LoadingState.Done);
       });
     }
-  }, [rows, getModelMetrics]);
+  }, [rows, getModelMetrics, appendToOrganizedData]);
 
   const startTime = dateTime();
   const endTime = dateTime();
@@ -86,7 +82,7 @@ export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
       });
 
       const data: PanelData = {
-        state: LoadingState.Done,
+        state: loading,
         timeRange: tmpTimeRange,
         series: series,
       }
