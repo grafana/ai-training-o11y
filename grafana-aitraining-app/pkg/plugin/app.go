@@ -25,11 +25,11 @@ var (
 // App is an example app backend plugin which can respond to data queries.
 type App struct {
 	backend.CallResourceHandler
-	lokiDatasourceName string
+	lokiDatasourceName  string
 	mimirDatasourceName string
-	metadataUrl string
-	metadataToken string
-	stackId string
+	metadataURL         string
+	metadataToken       string
+	stackID             string
 }
 
 func NewApp(_ context.Context, appSettings backend.AppInstanceSettings) (instancemgmt.Instance, error) {
@@ -58,8 +58,8 @@ func NewApp(_ context.Context, appSettings backend.AppInstanceSettings) (instanc
 	}
 
 	// Set values from JSONData
-	app.metadataUrl = getStringValue("metadataUrl")
-	app.stackId = getStringValue("stackId")
+	app.metadataURL = getStringValue("metadataUrl")
+	app.stackID = getStringValue("stackId")
 	app.lokiDatasourceName = getStringValue("lokiDatasourceName")
 	app.mimirDatasourceName = getStringValue("mimirDatasourceName")
 

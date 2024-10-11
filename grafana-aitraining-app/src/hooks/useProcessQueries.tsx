@@ -1,20 +1,9 @@
 import { useTrainingAppStore } from 'utils/state';
 import { runQuery } from 'utils/runQuery';
 import { dateTime, TimeRange } from '@grafana/data';
-import { FetchResponse, getBackendSrv, getDataSourceSrv } from '@grafana/runtime';
-import { lastValueFrom } from 'rxjs';
+import { getDataSourceSrv } from '@grafana/runtime';
 import { useAsync } from 'react-use';
-
-export const getSettings = async (pluginId: string) => {
-  const response = getBackendSrv().fetch({
-    url: `/api/plugins/${pluginId}/settings`,
-    method: 'get',
-  });
-
-  const dataResponse = await lastValueFrom(response);
-  const { lokiDatasourceName, mimirDatasourceName, metadataUrl } = (dataResponse as FetchResponse<any>).data.jsonData;
-  return { lokiDatasourceName, mimirDatasourceName, metadataUrl };
-}
+import { getSettings } from './useSettings';
 
 const useProcessQueries = () => {
   let datasource: any = null;
