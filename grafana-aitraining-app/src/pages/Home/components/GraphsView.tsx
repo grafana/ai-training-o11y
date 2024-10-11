@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
 import { RowData } from 'utils/state';
 import { SceneGraph } from './SceneGraph';
-import { PanelData, LoadingState, dateTime, TimeRange } from '@grafana/data';
+import { PanelData, LoadingState, dateTime, TimeRange, DataFrame } from '@grafana/data';
 import { ControlledCollapse } from '@grafana/ui';
 import { useGetModelMetrics } from 'utils/utils.plugin';
 
@@ -39,6 +39,8 @@ export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
               ...item,
               fields: item.fields.map((field: any) => ({
                 ...field,
+                name: field.name === metricName ? row.process_uuid : field.name,
+                length: field.values.length,
                 config: {}
               }))
             };
@@ -73,53 +75,34 @@ export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
       return [];
     }
   
-    return Object.entries(organizedData[section]).map(([key, metricData]: any) => {
-      console.log(`Processing metric: ${key}`);
-  
-      const stepDataKey = Object.keys(metricData)[0];
-      const stepData = metricData[stepDataKey];
-  
-      if (!stepData || !stepData[0] || !stepData[0].fields) {
-        console.log(`Invalid step data for metric ${key}`);
+    return Object.entries(organizedData[section]).map(([metricName, metricData]: any) => {
+      const series: DataFrame[] = Object.entries(metricData).map(([stepName, stepData]: any): DataFrame => {
+        const length: number = stepData.map((item: any) => item.fields[0].length).reduce((a: number, b: number) => Math.max(a, b), 0);
         return {
-          pluginId: 'xyplot',
-          title: key,
-          data: {
-            state: LoadingState.Error,
-            series: [],
-            timeRange: tmpTimeRange,
-          },
-        };
-      }
-  
-      const fieldsLength = stepData[0].fields[0].values.length;
-  
-      const panel: PanelData = {
+          name: metricName,
+          fields: stepData[0].fields,
+          length,
+        }
+      });
+
+      const data: PanelData = {
         state: LoadingState.Done,
         timeRange: tmpTimeRange,
-        series: [{
-          name: key,
-          fields: stepData[0].fields,
-          length: fieldsLength,
-        }],
-      };
-  
-      console.log(`Created panel for metric ${key}:`, JSON.stringify(panel, null, 2));
+        series: series,
+      }
   
       return {
         pluginId: 'xychart',
-        title: key,
-        data: panel,
-      };
+        title: metricName,
+        data,
+      }
     });
   };
 
   return (
     <div style={{ marginTop: '10px' }}>
       {organizedData && Object.keys(organizedData).map((section) => {
-        console.log(`Rendering section: ${section}`);
         const panels = createPanelList(section);
-        console.log(`Panels for section ${section}:`, panels);
         return (
           <ControlledCollapse
             key={section}
