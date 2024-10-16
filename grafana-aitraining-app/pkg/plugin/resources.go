@@ -81,13 +81,13 @@ func (a *App) metadataHandler(target string) func(http.ResponseWriter, *http.Req
 		}
 
 		// Set Authorization header if token is available
-		if a.metadataToken != "" && a.stackId != "" {
-			req.Header.Set("Authorization", "Bearer "+ a.stackId + ":" + a.metadataToken)
+		if a.metadataToken != "" && a.stackID != "" {
+			req.Header.Set("Authorization", "Bearer "+a.stackID+":"+a.metadataToken)
 		}
 
-		log.DefaultLogger.Debug("Proxying metadata request", 
-			"method", req.Method, 
-			"url", req.URL.String(), 
+		log.DefaultLogger.Debug("Proxying metadata request",
+			"method", req.Method,
+			"url", req.URL.String(),
 			"host", req.Host,
 			"x-forwarded-host", req.Header.Get("X-Forwarded-Host"))
 	}
@@ -103,6 +103,6 @@ func (a *App) registerRoutes(mux *http.ServeMux) {
 	log.DefaultLogger.Info("Registering routes")
 	mux.HandleFunc("/ping", a.handlePing)
 	mux.HandleFunc("/echo", a.handleEcho)
-	mux.HandleFunc("/metadata/", a.metadataHandler(a.metadataUrl)) // Use config for this
+	mux.HandleFunc("/metadata/", a.metadataHandler(a.metadataURL)) // Use config for this
 	log.DefaultLogger.Info("Routes registered successfully")
 }

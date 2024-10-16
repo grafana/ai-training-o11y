@@ -57,7 +57,7 @@ func TestCallResource(t *testing.T) {
 	defer testServer.Close()
 
 	// Update the app's metadataUrl to point to our test server
-	app.metadataUrl = testServer.URL
+	app.metadataURL = testServer.URL
 
 	// Set up and run test cases
 	testCases := []struct {
@@ -134,9 +134,9 @@ func TestCallResource(t *testing.T) {
 
 func TestMetadataHandlerTokenInjection(t *testing.T) {
 	app := &App{
-		metadataUrl:   "http://example.com",
+		metadataURL:   "http://example.com",
 		metadataToken: "test-token",
-		stackId:       "test-stack-id",
+		stackID:       "test-stack-id",
 	}
 
 	// Create a test server to mock the metadata service
@@ -150,17 +150,17 @@ func TestMetadataHandlerTokenInjection(t *testing.T) {
 	defer testServer.Close()
 
 	// Update the app's metadataUrl to point to our test server
-	app.metadataUrl = testServer.URL
+	app.metadataURL = testServer.URL
 
 	// Create a test request
 	req := httptest.NewRequest("GET", "/metadata/test", nil)
-	req.Host = "test-host"  // Set the Host header
+	req.Host = "test-host" // Set the Host header
 
 	// Create a response recorder
 	rr := httptest.NewRecorder()
 
 	// Call the metadataHandler
-	handler := app.metadataHandler(app.metadataUrl)
+	handler := app.metadataHandler(app.metadataURL)
 	handler(rr, req)
 
 	// Check the response
@@ -178,9 +178,9 @@ func TestMetadataHandlerTokenInjection(t *testing.T) {
 
 func TestMetadataHandlerPathTransformations(t *testing.T) {
 	app := &App{
-		metadataUrl:   "http://example.com",
+		metadataURL:   "http://example.com",
 		metadataToken: "test-token",
-		stackId:       "test-stack-id",
+		stackID:       "test-stack-id",
 	}
 
 	testCases := []struct {
@@ -211,17 +211,17 @@ func TestMetadataHandlerPathTransformations(t *testing.T) {
 			defer testServer.Close()
 
 			// Update the app's metadataUrl to point to our test server
-			app.metadataUrl = testServer.URL
+			app.metadataURL = testServer.URL
 
 			// Create a test request
 			req := httptest.NewRequest("GET", tc.inputPath, nil)
-			req.Host = "test-host"  // Set the Host header
+			req.Host = "test-host" // Set the Host header
 
 			// Create a response recorder
 			rr := httptest.NewRecorder()
 
 			// Call the metadataHandler
-			handler := app.metadataHandler(app.metadataUrl)
+			handler := app.metadataHandler(app.metadataURL)
 			handler(rr, req)
 
 			// Check the response
@@ -241,7 +241,7 @@ func TestMetadataHandlerPathTransformations(t *testing.T) {
 
 func TestMetadataHandlerNoToken(t *testing.T) {
 	app := &App{
-		metadataUrl: "http://example.com",
+		metadataURL: "http://example.com",
 		// No token set
 	}
 
@@ -258,7 +258,7 @@ func TestMetadataHandlerNoToken(t *testing.T) {
 	defer testServer.Close()
 
 	// Update the app's metadataUrl to point to our test server
-	app.metadataUrl = testServer.URL
+	app.metadataURL = testServer.URL
 
 	// Helper function to create and send a request
 	sendRequest := func(t *testing.T, path string, headers map[string]string) *httptest.ResponseRecorder {
@@ -268,7 +268,7 @@ func TestMetadataHandlerNoToken(t *testing.T) {
 			req.Header.Set(key, value)
 		}
 		rr := httptest.NewRecorder()
-		handler := app.metadataHandler(app.metadataUrl)
+		handler := app.metadataHandler(app.metadataURL)
 		handler(rr, req)
 		return rr
 	}
@@ -283,7 +283,7 @@ func TestMetadataHandlerNoToken(t *testing.T) {
 	// Test case 2: Request with multiple custom headers
 	t.Run("Multiple Custom Headers", func(t *testing.T) {
 		headers := map[string]string{
-			"X-Custom-Header": "preserved-value",
+			"X-Custom-Header":       "preserved-value",
 			"Another-Custom-Header": "another-value",
 		}
 		rr := sendRequest(t, "/metadata/test", headers)
