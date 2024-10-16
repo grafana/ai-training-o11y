@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -34,20 +35,22 @@ type AddModelMetricsResponse struct {
 // This is for return
 // We want an array of objects that contain grafana dataframes
 // For visualizing
-type DataFrame struct {
+type Field struct {
     Name   string        `json:"name"`
     Type   string        `json:"type"`
     Values []interface{} `json:"values"`
 }
 
-// To make it less painful to unmarshal and group them
-type DataFrameWrapper struct {
-    MetricName string   `json:"MetricName"`
-    StepName   string   `json:"StepName"`
-    Fields     []DataFrame  `json:"fields"`
+type DataFrame []Field
+
+type Panel struct {
+	Title string `json:"title"`
+	Series DataFrame `json:"series"`
 }
 
-type GetModelMetricsResponse []DataFrameWrapper
+type GetModelMetricsResponse struct {
+    Sections map[string][]Panel `json:"sections"`
+}
 
 
 func (a *App) addModelMetrics(tenantID string, req *http.Request) (interface{}, error) {
@@ -204,11 +207,12 @@ func (a *App) saveModelMetrics(ctx context.Context, stackID uint64, processID uu
 }
 
 func (a *App) getModelMetrics(tenantID string, req *http.Request) (interface{}, error) {
+	// parse request body into an array
+	var processes []string
 
-	// Extract and validate ProcessID
-	processID, err := extractAndValidateProcessID(req)
-	if err != nil {
-		return nil, err
+	decoder := json.NewDecoder(req.Body)
+	if err := decoder.Decode(&processes); err != nil {
+		return nil, middleware.ErrBadRequest(fmt.Errorf("invalid JSON: %v", err))
 	}
 
 	// Convert tenantID to uint64 for StackID
@@ -217,13 +221,12 @@ func (a *App) getModelMetrics(tenantID string, req *http.Request) (interface{}, 
 		return nil, middleware.ErrBadRequest(fmt.Errorf("invalid tenant ID: %w", err))
 	}
 
-	// Retrieved from DB
 	var rows []model.ModelMetrics
 
 	// Retrieve all relevant metrics from the database
 	err = a.db(req.Context()).
-		Where("stack_id = ? AND process_id = ?", stackID, processID).
-		Order("metric_name ASC, step_name ASC, step ASC").
+		Where("stack_id = ? AND process_id IN ?", stackID, processes).
+		Order("metric_name ASC, step_name ASC, process_id ASC, step ASC").
 		Find(&rows).Error
 
 	if err != nil {
@@ -232,53 +235,77 @@ func (a *App) getModelMetrics(tenantID string, req *http.Request) (interface{}, 
 
 	// Iterate over the metrics and build the series data
     var response GetModelMetricsResponse
-    var currentWrapper *DataFrameWrapper
-    var stepSlice []interface{}
-    var valueSlice []interface{}
+	response.Sections = make(map[string][]Panel)
+
+	var prevKey string
+	var currStep uint32
+
+	var stepField *Field
+	numFields := 1
+    var valueMap map[uuid.UUID]int
+	var currentPanel *Panel
+
 
     for _, row := range rows {
-        currSeriesKey := fmt.Sprintf("%s_%s", row.MetricName, row.StepName)
+        panelKey := fmt.Sprintf("%s_%s", row.MetricName, row.StepName)
+		// The section name is created by splitting the metricname on / and taking the first part
+		// If there is no /, it is "default"
+		sectionName := "default"
+		panelName := row.MetricName
+		parts := strings.Split(row.MetricName, "/");
+		if len(parts) > 1 { // There is at least one slash
+			sectionName = parts[0]
+			panelName = parts[1]
+		}
 
-        if currentWrapper == nil || currSeriesKey != fmt.Sprintf("%s_%s", currentWrapper.MetricName, currentWrapper.StepName) {
-            // We've encountered a new series, so append the current wrapper (if it exists) and create a new one
-            if currentWrapper != nil {
-                response = append(response, *currentWrapper)
-            }
+        if panelKey != prevKey {
+			// If this section doesn't exist, create it.
+			if _, exists := response.Sections[sectionName]; !exists {
+				response.Sections[sectionName] = []Panel{}
+			}
 
-            stepSlice = make([]interface{}, 0)
-            valueSlice = make([]interface{}, 0)
-            
-            currentWrapper = &DataFrameWrapper{
-                MetricName: row.MetricName,
-                StepName:   row.StepName,
-                Fields: []DataFrame{
-                    {
-                        Name:   row.StepName,
-                        Type:   "number",
-                        Values: stepSlice,
-                    },
-                    {
-                        Name:   row.MetricName,
-                        Type:   "number",
-                        Values: valueSlice,
-                    },
-                },
-            }
+			// Create a new panel
+			currentPanel = &Panel{
+				Title: panelName,
+				Series: make(DataFrame, 0),
+			}
+
+			// Initialize a new step field
+            stepField := &Field{
+				Name: row.StepName,
+				Type: "number",
+				Values: make([]interface{}, 0),
+			}
+
+			currentPanel.Series = append(currentPanel.Series, *stepField)
+
+			// Zero out the valueMap
+			valueMap = make(map[uuid.UUID]int)
+
+			// Append the current panel to the response
+			response.Sections[sectionName] = append(response.Sections[sectionName], *currentPanel)
         }
 
-        // Append the step and metricValue to the slices
-        stepSlice = append(stepSlice, row.Step)
-        valueSlice = append(valueSlice, row.MetricValue)
+		// If currStep is not defined or is different from the current step, create a new step
+		if currStep == 0 || currStep != row.Step {
+			stepField.Values = append(stepField.Values, currStep)
+			currStep = row.Step
+		}
 
-        // Update the Values in the DataFrameWrapper
-        currentWrapper.Fields[0].Values = stepSlice
-        currentWrapper.Fields[1].Values = valueSlice
+		// If the valueMap doesn't have a key for the current processID, create a new key
+		// and append a corresponding series to the current panel
+		if _, exists := valueMap[row.ProcessID]; !exists {
+			valueMap[row.ProcessID] = numFields;
+			currentPanel.Series = append(currentPanel.Series, Field{
+				Name: row.ProcessID.String(),
+				Type: "number",
+				Values: make([]interface{}, 0),
+			})
+			numFields++;
+		}
+
+		currentPanel.Series[valueMap[row.ProcessID]].Values = append(currentPanel.Series[valueMap[row.ProcessID]].Values, row.MetricValue)
     }
 
-    // Append the last wrapper if it exists
-    if currentWrapper != nil {
-        response = append(response, *currentWrapper)
-    }
-
-    return response, nil
+	return response, nil
 }
