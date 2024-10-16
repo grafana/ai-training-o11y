@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -276,6 +277,94 @@ func getCompleteMetrics(ctx context.Context, db *gorm.DB, stackID uint64, proces
     return results, nil
 }
 
+func transformMetricsData(results []Result) GetModelMetricsResponse {
+    // Group results by metric_name and step_name
+	// This makes it easy to separate panels: each []Result is a panel
+	// This "only" leaves turning it into a DataFrame to send to the frontend
+    groupedData := make(map[string]map[string][]Result)
+    for _, r := range results {
+        if _, ok := groupedData[r.MetricName]; !ok {
+            groupedData[r.MetricName] = make(map[string][]Result)
+        }
+
+		if _, ok := groupedData[r.MetricName][r.StepName]; !ok {
+			groupedData[r.MetricName][r.StepName] = make([]Result, 0)
+		}
+        groupedData[r.MetricName][r.StepName] = append(groupedData[r.MetricName][r.StepName], r)
+    }
+
+	response := GetModelMetricsResponse{
+        Sections: make(map[string][]Panel),
+    }
+
+    for metricName, stepData := range groupedData {
+		sectionName := "default";
+		displayName := metricName;
+		first, second, hasSectionName := strings.Cut(metricName, "/")
+		if hasSectionName {
+			sectionName = first
+			displayName = second
+		}
+
+		panels := []Panel{}
+		// Construct an individual panel
+		for stepName, metricRows := range stepData {
+			// Create empty panel
+
+			newPanel := Panel{
+				Title: displayName,
+				Series: make([]Field, 0),
+			};
+
+			// Create step field
+			stepField := Field{
+				Name: stepName,
+				Type: "number",
+				Values: nil,
+			}
+
+			var prevStep *uint32;
+			stepSlice := make([]uint32, 0)
+			processFields := make(map[string]*Field)
+			for _, row := range metricRows {
+				// if prevStep is nil or the same as current step
+				if prevStep == nil || *prevStep == row.Step {
+					stepSlice = append(stepSlice, row.Step)
+					prevStep = &row.Step
+				}
+				// Check if the field already exists
+				if _, ok := processFields[row.ProcessID.String()]; !ok {
+					processFields[row.ProcessID.String()] = &Field{
+						Name: row.ProcessID.String(),
+						Type: "number",
+						Values: make([]interface{}, 0),
+					}
+				}
+
+				// Append the value to the field
+				processFields[row.ProcessID.String()].Values = append(processFields[row.ProcessID.String()].Values, row.MetricValue)
+			}
+			// turn processFields into a slice
+			processFieldsSlice := make([]Field, 0)
+			for _, v := range processFields {
+				processFieldsSlice = append(processFieldsSlice, *v)
+			}
+
+			// append the stepField to the panel.Series
+			newPanel.Series = append(newPanel.Series, stepField)
+			// unpack the processFieldsSlice and append it into stepField.values too
+
+			// This is broken and I am going to ask claude how to fix it
+			newPanel.Series = append(newPanel.Series, processFieldsSlice...)
+			panels = append(panels, newPanel)
+		}
+
+		response.Sections[sectionName] = panels
+    }
+
+    return response
+}
+
 func (a *App) getModelMetrics(tenantID string, req *http.Request) (interface{}, error) {
 	// parse request body into an array
 	var processes []string
@@ -306,6 +395,21 @@ func (a *App) getModelMetrics(tenantID string, req *http.Request) (interface{}, 
         fmt.Printf("ProcessID: %s, MetricName: %s, StepName: %s, Step: %d, MetricValue: %s\n",
             r.ProcessID, r.MetricName, r.StepName, r.Step, metricValue)
     }
+
+	transformedMetricsData := transformMetricsData(results);
+
+	// print transformed results to console
+	fmt.Println("Transformed Results:")
+	for sectionName, panels := range transformedMetricsData.Sections {
+		fmt.Printf("Section: %s\n", sectionName)
+		for _, panel := range panels {
+			fmt.Printf("Panel: %s\n", panel.Title)
+			for _, field := range panel.Series {
+				fmt.Printf("Field: %s\n", field.Name)
+				fmt.Printf("Values: %v\n", field.Values)
+			}
+		}
+	}
 
     return results, nil  // Return results instead of nil
 }
