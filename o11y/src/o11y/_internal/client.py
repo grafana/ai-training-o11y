@@ -2,27 +2,24 @@
 # Contains a python object representing the metadata client
 # This should handle anything related to the job itself, like registering the job, updating metadata, etc
 # This should not be used for logging, metrics, etc
-from typing import Optional, Tuple
-import warnings
-import requests
 import json
 import os
 import time
 import warnings
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
+from urllib.parse import ParseResult, urlparse
 
 import requests
-from urllib.parse import urlparse
 
 from .. import logger
+
 
 class Client:
     def __init__(self):
         self.process_uuid = None
         self.user_metadata = None
-        self.url = None
-        self.token = None
-        self.tenant_id = None
+        # TODO: Should we require a URL when creating the client instead of via set_credentials?
+        self.url: ParseResult = ParseResult('', '', '', '', '', '')
         login_string = os.environ.get('GF_AI_TRAINING_CREDS')
         self.set_credentials(login_string)
 
@@ -32,61 +29,33 @@ class Client:
             return False
 
         try:
-            token, tenant_id, uri = self._parse_login_string(login_string)
-            uri = self._validate_credentials(token, tenant_id, uri)
-            self._set_credentials(token, tenant_id, uri)
+            self.url = self._parse_login_string(login_string)
             return True
         except Exception as e:
             warnings.warn(f"Invalid login string: {str(e)}")
             return False
 
 
-    def _parse_login_string(self, login_string: str) -> Tuple[str, str, str]:
-        parts = login_string.split('@')
-        if len(parts) != 2:
-            raise ValueError("Invalid login string format. Expected format: token:tenant_id@uri")
-        
-        credentials, uri = parts
-        cred_parts = credentials.split(':')
-        if len(cred_parts) != 2:
-            raise ValueError("Invalid credentials format. Expected format: token:tenant_id")
-        
-        token, tenant_id = cred_parts
-        return token.strip(), tenant_id.strip(), uri.strip()
+    def _parse_login_string(self, login_string: str) -> ParseResult:
+        parsed_url = urlparse(login_string)
+        if not parsed_url.hostname:
+            raise ValueError("Invalid login string format. Could not parse hostname from the URL.")
+        if parsed_url.scheme != "http" and parsed_url.scheme != "https":
+            raise ValueError("Invalid login string format. Scheme must be http or https.")
 
-    def _validate_credentials(self, token: str, tenant_id: str, uri: str) -> str:
-        if not tenant_id.isdigit():
-            warnings.warn("Invalid tenant_id: must be purely numeric")
-        
-        parsed_uri = urlparse(uri)
-        if not parsed_uri.scheme:
-            uri = "https://" + uri
-        elif parsed_uri.scheme not in ["http", "https"]:
-            warnings.warn(f"Invalid URI scheme '{parsed_uri.scheme}'. Using https instead.")
-            uri = "https://" + parsed_uri.netloc + parsed_uri.path
-        
-        return uri
+        return parsed_url
 
-    def _set_credentials(self, token: str, tenant_id: str, uri: str) -> None:
-        self.url = uri
-        self.token = token
-        self.tenant_id = tenant_id
 
     def register_process(self, data):
         if self.process_uuid:
             self.process_uuid = None
             self.user_metadata = None
 
-        if not self.tenant_id or not self.token:
-            logger.error("User ID or token is not set.")
-            return False
-
         headers = {
-            'Authorization': f'Bearer {self.tenant_id}:{self.token}',
             'Content-Type': 'application/json'
         }
 
-        url = f'{self.url}/api/v1/process/new'
+        url = f'{self.url.geturl()}/api/v1/process/new'
         
         try:
             response = requests.post(url, headers=headers, json=data)
@@ -109,13 +78,12 @@ class Client:
             logger.error("No process registered, unable to update metadata")
             return False
         headers = {
-            'Authorization': f'Bearer {self.tenant_id}:{self.token}',
             'Content-Type': 'application/json'
         }
         data = {
             'user_metadata': user_metadata
         }
-        url = f'{self.url}/api/v1/process/{process_uuid}/update-metadata'
+        url = f'{self.url.geturl()}/api/v1/process/{process_uuid}/update-metadata'
         response = requests.post(url, headers=headers, json=data)
 
         if response.status_code != 200:
@@ -128,13 +96,12 @@ class Client:
             logger.error("No process registered, unable to report state")
             return False
         headers = {
-            'Authorization': f'Bearer {self.tenant_id}:{self.token}',
             'Content-Type': 'application/json'
         }
         data = {
             'state': state
         }
-        url = f'{self.url}/api/v1/process/{self.process_uuid}/state'
+        url = f'{self.url.geturl()}/api/v1/process/{self.process_uuid}/state'
         response = requests.post(url, headers=headers, json=data)
 
         if response.status_code != 200:
@@ -176,10 +143,9 @@ class Client:
             ]
         }
 
-        url = f'{self.url}/api/v1/process/{self.process_uuid}/model-metrics'
+        url = f'{self.url.geturl()}/api/v1/process/{self.process_uuid}/model-metrics'
 
         headers = {
-            'Authorization': f'Bearer {self.tenant_id}:{self.token}',
             'Content-Type': 'application/json'
         }
 

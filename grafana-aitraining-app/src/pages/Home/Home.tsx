@@ -100,6 +100,14 @@ export const Home = () => {
     return <Alert title="Error loading"> Error loading app settings. Please try again later. </Alert>;
   }
 
+  const isCloud = settings.stackId !== undefined && settings.stackId !== '';
+  let metadataUrl = new URL(settings.metadataUrl);
+  if (isCloud) {
+    metadataUrl.username = settings.stackId
+    // Setting the password appears to pass through URL encoding still so <token> is not rendered properly.
+    metadataUrl.password = '--token--'
+  }
+
   return (
     <PluginPage
       renderTitle={() => {
@@ -117,23 +125,18 @@ export const Home = () => {
               Select one or more training processes from the list below.
               <br />
               Then, click <strong>View graphs</strong> and a list of graphs will be generated.
-              <div>
+              <p>
                 To send data to the AI Training o11y app set the following environment variable:
-                {settings.stackId === undefined || settings.stackId === '' ? (
-                  <pre>
-                    GF_AI_TRAINING_CREDS={settings.metadataUrl}
-                  </pre>
-                ) : (<pre>
-                  GF_AI_TRAINING_CREDS={"<token>"}:{settings.stackId}@{settings.metadataUrl}
-                </pre>
-                )}
-                {settings.stackId !== undefined && settings.stackId !== '' ? (
-                  // Only generate this section if a stackId is present (running in cloud).
-                  <p>
-                    To generate a token create an access policy in the <TextLink href="/a/grafana-auth-app">Grafana auth app</TextLink>.
-                  </p>
-                ) : null}
-              </div>
+              </p>
+              <pre>
+                {'GF_AI_TRAINING_CREDS="' + metadataUrl + '"'}
+              </pre>
+              {isCloud ? (
+                // Only generate this section if a stackId is present (running in cloud).
+                <p>
+                  To generate a token create an access policy in the <TextLink href="/a/grafana-auth-app">Grafana auth app</TextLink>.
+                </p>
+              ) : null}
             </div>
             {selectedRows.length < 1 ? (
               <Button disabled={true} variant="primary">
