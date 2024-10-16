@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -30,6 +29,16 @@ type ModelMetricsSeries struct {
 type AddModelMetricsResponse struct {
     Message        string `json:"message"`
     MetricsCreated uint32    `json:"metricsCreated"`
+}
+
+// Result struct to hold our query results
+type Result struct {
+    StackID     uint64
+    ProcessID   uuid.UUID
+    MetricName  string
+    StepName    string
+    Step        uint32
+    MetricValue *string // Pointer to allow for NULL values
 }
 
 // This is for return
@@ -206,6 +215,67 @@ func (a *App) saveModelMetrics(ctx context.Context, stackID uint64, processID uu
 	return createdCount, nil
 }
 
+func getCompleteMetrics(ctx context.Context, db *gorm.DB, stackID uint64, processes []string) ([]Result, error) {
+    // Convert []string to []uuid.UUID
+    uuidProcesses := make([]uuid.UUID, 0, len(processes))
+    for _, p := range processes {
+        uid, err := uuid.Parse(p)
+        if err != nil {
+            return nil, fmt.Errorf("invalid UUID string: %s", p)
+        }
+        uuidProcesses = append(uuidProcesses, uid)
+    }
+
+    var results []Result
+
+    query := `
+			WITH process_metrics AS (
+			SELECT DISTINCT process_id, metric_name, step_name
+			FROM model_metrics
+			WHERE stack_id = ? AND process_id IN ?
+		),
+		metric_steps AS (
+			SELECT metric_name, step_name, step
+			FROM model_metrics
+			WHERE stack_id = ? AND process_id IN ?
+		),
+		all_combinations AS (
+			SELECT 
+				pm.process_id,
+				pm.metric_name,
+				pm.step_name,
+				ms.step
+			FROM 
+				process_metrics pm
+			JOIN
+				metric_steps ms ON pm.metric_name = ms.metric_name AND pm.step_name = ms.step_name
+		)
+		SELECT 
+			ac.process_id,
+			ac.metric_name,
+			ac.step_name,
+			ac.step,
+			d.metric_value
+		FROM 
+			all_combinations ac
+		LEFT JOIN
+			model_metrics d ON d.stack_id = ? 
+							AND d.process_id = ac.process_id 
+							AND d.metric_name = ac.metric_name 
+							AND d.step_name = ac.step_name
+							AND d.step = ac.step
+		ORDER BY 
+			ac.metric_name ASC, ac.step_name ASC, ac.step ASC, ac.process_id ASC
+    `
+
+    err := db.WithContext(ctx).Raw(query, stackID, uuidProcesses, stackID, uuidProcesses, stackID).Scan(&results).Error
+    if err != nil {
+        return nil, fmt.Errorf("error executing query: %v", err)
+    }
+
+    return results, nil
+}
+
 func (a *App) getModelMetrics(tenantID string, req *http.Request) (interface{}, error) {
 	// parse request body into an array
 	var processes []string
@@ -221,91 +291,21 @@ func (a *App) getModelMetrics(tenantID string, req *http.Request) (interface{}, 
 		return nil, middleware.ErrBadRequest(fmt.Errorf("invalid tenant ID: %w", err))
 	}
 
-	var rows []model.ModelMetrics
-
-	// Retrieve all relevant metrics from the database
-	err = a.db(req.Context()).
-		Where("stack_id = ? AND process_id IN ?", stackID, processes).
-		Order("metric_name ASC, step_name ASC, process_id ASC, step ASC").
-		Find(&rows).Error
-
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving model metrics: %w", err)
-	}
-
-	// Iterate over the metrics and build the series data
-    var response GetModelMetricsResponse
-	response.Sections = make(map[string][]Panel)
-
-	var prevKey string
-	var currStep uint32
-
-	var stepField *Field
-	numFields := 1
-    var valueMap map[uuid.UUID]int
-	var currentPanel *Panel
-
-
-    for _, row := range rows {
-        panelKey := fmt.Sprintf("%s_%s", row.MetricName, row.StepName)
-		// The section name is created by splitting the metricname on / and taking the first part
-		// If there is no /, it is "default"
-		sectionName := "default"
-		panelName := row.MetricName
-		parts := strings.Split(row.MetricName, "/");
-		if len(parts) > 1 { // There is at least one slash
-			sectionName = parts[0]
-			panelName = parts[1]
-		}
-
-        if panelKey != prevKey {
-			// If this section doesn't exist, create it.
-			if _, exists := response.Sections[sectionName]; !exists {
-				response.Sections[sectionName] = []Panel{}
-			}
-
-			// Create a new panel
-			currentPanel = &Panel{
-				Title: panelName,
-				Series: make(DataFrame, 0),
-			}
-
-			// Initialize a new step field
-            stepField := &Field{
-				Name: row.StepName,
-				Type: "number",
-				Values: make([]interface{}, 0),
-			}
-
-			currentPanel.Series = append(currentPanel.Series, *stepField)
-
-			// Zero out the valueMap
-			valueMap = make(map[uuid.UUID]int)
-
-			// Append the current panel to the response
-			response.Sections[sectionName] = append(response.Sections[sectionName], *currentPanel)
-        }
-
-		// If currStep is not defined or is different from the current step, create a new step
-		if currStep == 0 || currStep != row.Step {
-			stepField.Values = append(stepField.Values, currStep)
-			currStep = row.Step
-		}
-
-		// If the valueMap doesn't have a key for the current processID, create a new key
-		// and append a corresponding series to the current panel
-		if _, exists := valueMap[row.ProcessID]; !exists {
-			valueMap[row.ProcessID] = numFields;
-			currentPanel.Series = append(currentPanel.Series, Field{
-				Name: row.ProcessID.String(),
-				Type: "number",
-				Values: make([]interface{}, 0),
-			})
-			numFields++;
-		}
-
-		currentPanel.Series[valueMap[row.ProcessID]].Values = append(currentPanel.Series[valueMap[row.ProcessID]].Values, row.MetricValue)
+    results, err := getCompleteMetrics(req.Context(), a.db(req.Context()), stackID, processes)
+    if err != nil {
+        return nil, fmt.Errorf("error getting complete metrics: %w", err)
     }
 
-	return response, nil
+    // Print results to console
+    fmt.Println("Results:")
+    for _, r := range results {
+        metricValue := "NULL"
+        if r.MetricValue != nil {
+            metricValue = *r.MetricValue
+        }
+        fmt.Printf("ProcessID: %s, MetricName: %s, StepName: %s, Step: %d, MetricValue: %s\n",
+            r.ProcessID, r.MetricName, r.StepName, r.Step, metricValue)
+    }
+
+    return results, nil  // Return results instead of nil
 }
