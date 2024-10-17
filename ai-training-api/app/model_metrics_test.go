@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
+	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/assert"
@@ -289,113 +290,67 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 	}
 }
 
-func TestGetModelMetrics(t *testing.T) {
-    db, cleanup := setupTestDB(t)
-    defer cleanup()
+func TestTransformMetricsData(t *testing.T) {
+	// Helper function to create a string pointer
+	strPtr := func(s string) *string {
+		return &s
+	}
 
-    app := &testApp{
-        App: App{_db: db},
-    }
+	// Test case
+	testCase := struct {
+		name     string
+		input    []Result
+		expected GetModelMetricsResponse
+	}{
+		name: "Mixed metrics with different sections and step names",
+		input: []Result{
+			{StackID: 1, ProcessID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), MetricName: "training/accuracy", StepName: "Epoch", Step: 1, MetricValue: strPtr("0.75")},
+			{StackID: 1, ProcessID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), MetricName: "training/accuracy", StepName: "Epoch", Step: 2, MetricValue: strPtr("0.80")},
+			{StackID: 1, ProcessID: uuid.MustParse("22222222-2222-2222-2222-222222222222"), MetricName: "training/accuracy", StepName: "Epoch", Step: 1, MetricValue: strPtr("0.70")},
+			{StackID: 1, ProcessID: uuid.MustParse("22222222-2222-2222-2222-222222222222"), MetricName: "training/accuracy", StepName: "Epoch", Step: 2, MetricValue: strPtr("0.78")},
+			{StackID: 1, ProcessID: uuid.MustParse("33333333-3333-3333-3333-333333333333"), MetricName: "evaluation/f1_score", StepName: "Step", Step: 1, MetricValue: strPtr("0.65")},
+			{StackID: 1, ProcessID: uuid.MustParse("33333333-3333-3333-3333-333333333333"), MetricName: "evaluation/f1_score", StepName: "Step", Step: 2, MetricValue: strPtr("0.70")},
+			{StackID: 1, ProcessID: uuid.MustParse("44444444-4444-4444-4444-444444444444"), MetricName: "custom_metric", StepName: "Iteration", Step: 1, MetricValue: strPtr("10")},
+			{StackID: 1, ProcessID: uuid.MustParse("44444444-4444-4444-4444-444444444444"), MetricName: "custom_metric", StepName: "Iteration", Step: 2, MetricValue: strPtr("15")},
+		},
+		expected: GetModelMetricsResponse{
+			Sections: map[string][]Panel{
+				"training": {
+					{
+						Title: "accuracy",
+						Series: DataFrame{
+							{Name: "Epoch", Type: "number", Values: []interface{}{float64(1), float64(2)}},
+							{Name: "11111111-1111-1111-1111-111111111111", Type: "number", Values: []interface{}{0.75, 0.80}},
+							{Name: "22222222-2222-2222-2222-222222222222", Type: "number", Values: []interface{}{0.70, 0.78}},
+						},
+					},
+				},
+				"evaluation": {
+					{
+						Title: "f1_score",
+						Series: DataFrame{
+							{Name: "Step", Type: "number", Values: []interface{}{float64(1), float64(2)}},
+							{Name: "33333333-3333-3333-3333-333333333333", Type: "number", Values: []interface{}{0.65, 0.70}},
+						},
+					},
+				},
+				"default": {
+					{
+						Title: "custom_metric",
+						Series: DataFrame{
+							{Name: "Iteration", Type: "number", Values: []interface{}{float64(1), float64(2)}},
+							{Name: "44444444-4444-4444-4444-444444444444", Type: "number", Values: []interface{}{float64(10), float64(15)}},
+						},
+					},
+				},
+			},
+		},
+	}
 
-    type testCase struct {
-        name    string
-        metrics []model.ModelMetrics
-        check   func(*testing.T, GetModelMetricsResponse)
-    }
-
-    testCases := []testCase{
-        {
-            name: "Basic case",
-            metrics: []model.ModelMetrics{
-                {MetricName: "accuracy", StepName: "train", Step: 1, MetricValue: "0.75"},
-                {MetricName: "accuracy", StepName: "train", Step: 2, MetricValue: "0.80"},
-                {MetricName: "loss", StepName: "train", Step: 1, MetricValue: "0.5"},
-                {MetricName: "loss", StepName: "train", Step: 2, MetricValue: "0.4"},
-            },
-            check: func(t *testing.T, response GetModelMetricsResponse) {
-                require.Len(t, response, 2) // Two DataFrameWrappers: one for accuracy, one for loss
-                
-                // Check accuracy metrics
-                require.Equal(t, "accuracy", response[0].MetricName)
-                require.Equal(t, "train", response[0].StepName)
-                require.Len(t, response[0].Fields, 2)
-                require.Equal(t, []interface{}{uint32(1), uint32(2)}, response[0].Fields[0].Values)
-                require.Equal(t, []interface{}{"0.75", "0.80"}, response[0].Fields[1].Values)
-
-                // Check loss metrics
-                require.Equal(t, "loss", response[1].MetricName)
-                require.Equal(t, "train", response[1].StepName)
-                require.Len(t, response[1].Fields, 2)
-                require.Equal(t, []interface{}{uint32(1), uint32(2)}, response[1].Fields[0].Values)
-                require.Equal(t, []interface{}{"0.5", "0.4"}, response[1].Fields[1].Values)
-            },
-        },
-        {
-            name:    "No metrics",
-            metrics: []model.ModelMetrics{},
-            check: func(t *testing.T, response GetModelMetricsResponse) {
-                require.Len(t, response, 0)
-            },
-        },
-        {
-            name: "Single metric",
-            metrics: []model.ModelMetrics{
-                {MetricName: "accuracy", StepName: "train", Step: 1, MetricValue: "0.75"},
-            },
-            check: func(t *testing.T, response GetModelMetricsResponse) {
-                require.Len(t, response, 1)
-                require.Equal(t, "accuracy", response[0].MetricName)
-                require.Equal(t, "train", response[0].StepName)
-                require.Len(t, response[0].Fields, 2)
-                require.Equal(t, []interface{}{uint32(1)}, response[0].Fields[0].Values)
-                require.Equal(t, []interface{}{"0.75"}, response[0].Fields[1].Values)
-            },
-        },
-    }
-
-    for _, tc := range testCases {
-        t.Run(tc.name, func(t *testing.T) {
-            // Clear the database
-            db.Exec("DELETE FROM model_metrics")
-
-            processID := uuid.New()
-            for i := range tc.metrics {
-                tc.metrics[i].ProcessID = processID
-            }
-            insertTestMetrics(t, db, tc.metrics)
-
-            req := setupTestRequest(processID.String())
-            result, err := app.getModelMetrics("0", req)
-            require.NoError(t, err)
-            response, ok := result.(GetModelMetricsResponse)
-            require.True(t, ok)
-
-            // Print out the entire response for debugging
-            t.Logf("Response: %+v", response)
-
-            if tc.name == "Basic case" {
-                // Print out the Values slices for debugging
-                t.Logf("Step Values: %+v", response[0].Fields[0].Values)
-                t.Logf("Metric Values: %+v", response[0].Fields[1].Values)
-            }
-
-            // Run the check function
-            tc.check(t, response)
-        })
-    }
-}
-
-func insertTestMetrics(t *testing.T, db *gorm.DB, metrics []model.ModelMetrics) {
-    for _, metric := range metrics {
-        err := db.Create(&metric).Error
-        require.NoError(t, err)
-    }
-}
-
-func setupTestRequest(processID string) *http.Request {
-    req, _ := http.NewRequest("GET", "/process/"+processID+"/model-metrics", nil)
-    vars := map[string]string{
-        "id": processID,
-    }
-    return mux.SetURLVars(req, vars)
+    t.Run(testCase.name, func(t *testing.T) {
+        result := transformMetricsData(testCase.input)
+        if diff := cmp.Diff(testCase.expected, result); diff != "" {
+            t.Errorf("transformMetricsData() mismatch (-want +got):\n%s", diff)
+        }
+    })
 }
