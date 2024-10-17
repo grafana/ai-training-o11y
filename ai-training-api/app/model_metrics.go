@@ -241,7 +241,7 @@ func getCompleteMetrics(ctx context.Context, db *gorm.DB, stackID uint64, proces
 			WHERE stack_id = ? AND process_id IN ?
 		),
 		all_combinations AS (
-			SELECT 
+			SELECT DISTINCT
 				pm.process_id,
 				pm.metric_name,
 				pm.step_name,
@@ -251,7 +251,7 @@ func getCompleteMetrics(ctx context.Context, db *gorm.DB, stackID uint64, proces
 			JOIN
 				metric_steps ms ON pm.metric_name = ms.metric_name AND pm.step_name = ms.step_name
 		)
-		SELECT 
+		SELECT DISTINCT
 			ac.process_id,
 			ac.metric_name,
 			ac.step_name,
