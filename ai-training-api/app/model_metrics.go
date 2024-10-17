@@ -320,18 +320,19 @@ func transformMetricsData(results []Result) GetModelMetricsResponse {
 			stepField := Field{
 				Name: stepName,
 				Type: "number",
-				Values: nil,
+				Values: make([]interface{}, 0),
 			}
 
-			var prevStep *uint32;
-			stepSlice := make([]uint32, 0)
+			steps := make([]interface{}, 0)
+			lastStep := uint32(0)
 			processFields := make(map[string]*Field)
 			for _, row := range metricRows {
-				// if prevStep is nil or the same as current step
-				if prevStep == nil || *prevStep == row.Step {
-					stepSlice = append(stepSlice, row.Step)
-					prevStep = &row.Step
+				// Add new steps
+				if row.Step != lastStep {
+					steps = append(steps, row.Step)
+					lastStep = row.Step
 				}
+
 				// Check if the field already exists
 				if _, ok := processFields[row.ProcessID.String()]; !ok {
 					processFields[row.ProcessID.String()] = &Field{
@@ -344,13 +345,14 @@ func transformMetricsData(results []Result) GetModelMetricsResponse {
 				// Append the value to the field
 				processFields[row.ProcessID.String()].Values = append(processFields[row.ProcessID.String()].Values, row.MetricValue)
 			}
+
+			stepField.Values = steps
 			// turn processFields into a slice
 			processFieldsSlice := make([]Field, 0)
 			for _, v := range processFields {
 				processFieldsSlice = append(processFieldsSlice, *v)
 			}
 
-			// append the stepField to the panel.Series
 			newPanel.Series = append(newPanel.Series, stepField)
 			// unpack the processFieldsSlice and append it into stepField.values too
 

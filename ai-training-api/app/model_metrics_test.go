@@ -305,8 +305,8 @@ func TestTransformMetricsData(t *testing.T) {
 		name: "Mixed metrics with different sections and step names",
 		input: []Result{
 			{StackID: 1, ProcessID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), MetricName: "training/accuracy", StepName: "Epoch", Step: 1, MetricValue: strPtr("0.75")},
-			{StackID: 1, ProcessID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), MetricName: "training/accuracy", StepName: "Epoch", Step: 2, MetricValue: strPtr("0.80")},
 			{StackID: 1, ProcessID: uuid.MustParse("22222222-2222-2222-2222-222222222222"), MetricName: "training/accuracy", StepName: "Epoch", Step: 1, MetricValue: strPtr("0.70")},
+			{StackID: 1, ProcessID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), MetricName: "training/accuracy", StepName: "Epoch", Step: 2, MetricValue: strPtr("0.80")},
 			{StackID: 1, ProcessID: uuid.MustParse("22222222-2222-2222-2222-222222222222"), MetricName: "training/accuracy", StepName: "Epoch", Step: 2, MetricValue: strPtr("0.78")},
 			{StackID: 1, ProcessID: uuid.MustParse("33333333-3333-3333-3333-333333333333"), MetricName: "evaluation/f1_score", StepName: "Step", Step: 1, MetricValue: strPtr("0.65")},
 			{StackID: 1, ProcessID: uuid.MustParse("33333333-3333-3333-3333-333333333333"), MetricName: "evaluation/f1_score", StepName: "Step", Step: 2, MetricValue: strPtr("0.70")},
@@ -319,9 +319,9 @@ func TestTransformMetricsData(t *testing.T) {
 					{
 						Title: "accuracy",
 						Series: DataFrame{
-							{Name: "Epoch", Type: "number", Values: []interface{}{float64(1), float64(2)}},
-							{Name: "11111111-1111-1111-1111-111111111111", Type: "number", Values: []interface{}{0.75, 0.80}},
-							{Name: "22222222-2222-2222-2222-222222222222", Type: "number", Values: []interface{}{0.70, 0.78}},
+							{Name: "Epoch", Type: "number", Values: []interface{}{uint32(1), uint32(2)}},
+							{Name: "11111111-1111-1111-1111-111111111111", Type: "number", Values: []interface{}{strPtr("0.75"), strPtr("0.80")}},
+							{Name: "22222222-2222-2222-2222-222222222222", Type: "number", Values: []interface{}{strPtr("0.70"), strPtr("0.78")}},
 						},
 					},
 				},
@@ -329,8 +329,8 @@ func TestTransformMetricsData(t *testing.T) {
 					{
 						Title: "f1_score",
 						Series: DataFrame{
-							{Name: "Step", Type: "number", Values: []interface{}{float64(1), float64(2)}},
-							{Name: "33333333-3333-3333-3333-333333333333", Type: "number", Values: []interface{}{0.65, 0.70}},
+							{Name: "Step", Type: "number", Values: []interface{}{uint32(1), uint32(2)}},
+							{Name: "33333333-3333-3333-3333-333333333333", Type: "number", Values: []interface{}{strPtr("0.65"), strPtr("0.70")}},
 						},
 					},
 				},
@@ -338,8 +338,8 @@ func TestTransformMetricsData(t *testing.T) {
 					{
 						Title: "custom_metric",
 						Series: DataFrame{
-							{Name: "Iteration", Type: "number", Values: []interface{}{float64(1), float64(2)}},
-							{Name: "44444444-4444-4444-4444-444444444444", Type: "number", Values: []interface{}{float64(10), float64(15)}},
+							{Name: "Iteration", Type: "number", Values: []interface{}{uint32(1), uint32(2)}},
+							{Name: "44444444-4444-4444-4444-444444444444", Type: "number", Values: []interface{}{strPtr("10"), strPtr("15")}},
 						},
 					},
 				},
