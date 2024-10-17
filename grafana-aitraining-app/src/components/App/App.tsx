@@ -31,10 +31,14 @@ export class App extends React.PureComponent<AppRootProps> {
 
   getProcesses = makeProcessGetter(this.props.meta.id);
 
-  getModelMetrics = (processUuid: string) => {
+  getModelMetrics = (processUUIDs: string[]) => {
     const response = doRequest({
-      url: `/api/plugins/${this.props.meta.id}/resources/metadata/api/v1/process/${processUuid}/model-metrics`,
-      method: 'GET',
+      url: `/api/plugins/${this.props.meta.id}/resources/metadata/api/v1/processes/model-metrics`,
+      method: 'POST',
+      data: JSON.stringify(processUUIDs),
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
     return response;
   }
