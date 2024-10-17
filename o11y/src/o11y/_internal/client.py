@@ -18,9 +18,6 @@ class Client:
     def __init__(self):
         self.process_uuid = None
         self.user_metadata = None
-        self.url = None
-        self.token = None
-        self.tenant_id = None
         self.step = 1
         # TODO: Should we require a URL when creating the client instead of via set_credentials?
         self.url: ParseResult = ParseResult('', '', '', '', '', '')
