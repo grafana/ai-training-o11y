@@ -1,10 +1,14 @@
 import React, { useEffect } from 'react';
-import { RowData } from 'utils/state';
-import { PanelData, LoadingState, DataFrame, dateTime, TimeRange, FieldType } from '@grafana/data';
-import { useGetModelMetrics } from 'utils/utils.plugin';
+import { PanelData, LoadingState, DataFrame, dateTime, TimeRange } from '@grafana/data';
 import { ControlledCollapse } from '@grafana/ui';
+import { config } from '@grafana/runtime';
+
 import { SceneGraph } from './SceneGraph';
-// import { SceneGraph } from './SceneGraph';
+import { RowData } from 'utils/state';
+
+import { useGetModelMetrics } from 'utils/utils.plugin';
+
+const palette = config.theme2.visualization.palette;
 
 export interface MetricPanel {
   pluginId: string;
@@ -15,6 +19,8 @@ export interface MetricPanel {
 interface GraphsProps {
   rows: RowData[];
 }
+
+
 
 export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
   // WIP:
@@ -48,14 +54,30 @@ export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
         to: endTime.toISOString(),
       },
     };
-    const fields = panelData.series.map((s: any): DataFrame[] => {
+    let i = 0;
+    const fields = panelData.series.map((s: any): DataFrame[] => { 
+      s.values = [
+        s.values[0],
+        ...s.values.slice(1).map((v: string | undefined) => {
+          if (v === undefined || v === null) {
+            return undefined
+          }
+          return parseFloat(v)
+      })
+      ]
+      let color = palette[i % palette.length];
+      i += 1;
       return {
         ...s,
-        values: s.type === FieldType.number && typeof(s.values[0]) === 'string' ? s.values.map((v: any) => parseFloat(v)) : s.values,
-        config: {}
+        config: {
+          color: {
+            mode: 'fixed',
+            fixedColor: color,
+          },
+        }
       }
     });
-    const ret = {
+    return {
       pluginId: 'trend',
       title: panelData.title,
       data: {
@@ -67,7 +89,6 @@ export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
         }],
       },
     }
-    return ret
   }
 
   return (
