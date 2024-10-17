@@ -326,6 +326,7 @@ func transformMetricsData(results []Result) GetModelMetricsResponse {
 			steps := make([]interface{}, 0)
 			lastStep := uint32(0)
 			processFields := make(map[string]*Field)
+			processOrder := make([]string, 0)
 			for _, row := range metricRows {
 				// Add new steps
 				if row.Step != lastStep {
@@ -340,8 +341,9 @@ func transformMetricsData(results []Result) GetModelMetricsResponse {
 						Type: "number",
 						Values: make([]interface{}, 0),
 					}
-				}
 
+					processOrder = append(processOrder, row.ProcessID.String());
+				}
 				// Append the value to the field
 				processFields[row.ProcessID.String()].Values = append(processFields[row.ProcessID.String()].Values, row.MetricValue)
 			}
@@ -349,8 +351,8 @@ func transformMetricsData(results []Result) GetModelMetricsResponse {
 			stepField.Values = steps
 			// turn processFields into a slice
 			processFieldsSlice := make([]Field, 0)
-			for _, v := range processFields {
-				processFieldsSlice = append(processFieldsSlice, *v)
+			for _, proc_id := range processOrder {
+				processFieldsSlice = append(processFieldsSlice, *processFields[proc_id])
 			}
 
 			newPanel.Series = append(newPanel.Series, stepField)
@@ -387,31 +389,7 @@ func (a *App) getModelMetrics(tenantID string, req *http.Request) (interface{}, 
         return nil, fmt.Errorf("error getting complete metrics: %w", err)
     }
 
-    // Print results to console
-    fmt.Println("Results:")
-    for _, r := range results {
-        metricValue := "NULL"
-        if r.MetricValue != nil {
-            metricValue = *r.MetricValue
-        }
-        fmt.Printf("ProcessID: %s, MetricName: %s, StepName: %s, Step: %d, MetricValue: %s\n",
-            r.ProcessID, r.MetricName, r.StepName, r.Step, metricValue)
-    }
-
 	transformedMetricsData := transformMetricsData(results);
 
-	// print transformed results to console
-	fmt.Println("Transformed Results:")
-	for sectionName, panels := range transformedMetricsData.Sections {
-		fmt.Printf("Section: %s\n", sectionName)
-		for _, panel := range panels {
-			fmt.Printf("Panel: %s\n", panel.Title)
-			for _, field := range panel.Series {
-				fmt.Printf("Field: %s\n", field.Name)
-				fmt.Printf("Values: %v\n", field.Values)
-			}
-		}
-	}
-
-    return results, nil  // Return results instead of nil
+    return transformedMetricsData, nil  // Return results instead of nil
 }

@@ -312,6 +312,7 @@ func TestTransformMetricsData(t *testing.T) {
 			{StackID: 1, ProcessID: uuid.MustParse("33333333-3333-3333-3333-333333333333"), MetricName: "evaluation/f1_score", StepName: "Step", Step: 2, MetricValue: strPtr("0.70")},
 			{StackID: 1, ProcessID: uuid.MustParse("44444444-4444-4444-4444-444444444444"), MetricName: "custom_metric", StepName: "Iteration", Step: 1, MetricValue: strPtr("10")},
 			{StackID: 1, ProcessID: uuid.MustParse("44444444-4444-4444-4444-444444444444"), MetricName: "custom_metric", StepName: "Iteration", Step: 2, MetricValue: strPtr("15")},
+			{StackID: 1, ProcessID: uuid.MustParse("55555555-5555-5555-5555-555555555555"), MetricName: "test/accuracy", StepName: "Step", Step: 1, MetricValue: strPtr("0.9")},
 		},
 		expected: GetModelMetricsResponse{
 			Sections: map[string][]Panel{
@@ -331,6 +332,23 @@ func TestTransformMetricsData(t *testing.T) {
 						Series: DataFrame{
 							{Name: "Step", Type: "number", Values: []interface{}{uint32(1), uint32(2)}},
 							{Name: "33333333-3333-3333-3333-333333333333", Type: "number", Values: []interface{}{strPtr("0.65"), strPtr("0.70")}},
+						},
+					},
+				},
+				"test": {
+					{
+						Title: "accuracy",
+						Series: DataFrame{
+							{
+								Name: "Step",
+								Type: "number",
+								Values: []interface{}{uint32(1)},
+							},
+							{
+								Name: "55555555-5555-5555-5555-555555555555",
+								Type: "number",
+								Values: []interface{}{strPtr("0.9")},
+							},
 						},
 					},
 				},
