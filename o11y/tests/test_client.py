@@ -6,13 +6,11 @@ from o11y._internal.client import Client
 @pytest.fixture
 def client():
     client = Client()
-    client.tenant_id = "test_tenant"
-    client.token = "test_token"
-    client.url = "https://test.com"
+    client.set_credentials("https://test_tenant:test_token@test.com")
     return client
 
 @pytest.mark.parametrize("credentials, expected_result, expect_warning", [
-    ("token123:12345@example.com", True, False),
+    ("https://12345:token123@example.com", True, False),
     ("invalid_format", False, True),
     ("", False, True),
     (None, False, True),
@@ -31,59 +29,39 @@ def test_set_credentials(client, credentials, expected_result, expect_warning):
     assert result == expected_result, f"Expected set_credentials to return {expected_result}, but got {result}"
 
     if expected_result:
-        assert client.token == "token123", f"Expected token to be 'token123', but got '{client.token}'"
-        assert client.tenant_id == "12345", f"Expected tenant_id to be '12345', but got '{client.tenant_id}'"
-        assert client.url == "https://example.com", f"Expected url to be 'https://example.com', got '{client.url}'"
+        assert client.url.geturl() == "https://12345:token123@example.com", f"Expected url to be 'https://example.com', got '{client.url.geturl()}'"
 
 def test_parse_login_string_valid(client):
-    token, tenant_id, uri = client._parse_login_string("token123:12345@example.com")
-    assert token == "token123", f"Expected token 'token123', got '{token}'"
-    assert tenant_id == "12345", f"Expected tenant_id '12345', got '{tenant_id}'"
-    assert uri == "example.com", f"Expected uri 'example.com', got '{uri}'"
+    url = client._parse_login_string("http://12345:token123@example.com")
+    assert url.password == "token123"
+    assert url.username == "12345"
+    assert url.hostname == "example.com"
 
 @pytest.mark.parametrize("invalid_login", [
     "invalid_format",
-    "token123@example.com",
 ])
 def test_parse_login_string_invalid(client, invalid_login):
     with pytest.raises(ValueError, match="Invalid (login string|credentials) format"):
         client._parse_login_string(invalid_login)
 
-def test_validate_credentials_valid(client):
-    uri = client._validate_credentials("token123", "12345", "example.com")
-    assert uri == "https://example.com", f"Expected 'https://example.com', got '{uri}'"
-
-def test_validate_credentials_non_numeric_tenant_id(client):
-    with pytest.warns((Warning, DeprecationWarning)) as warning_info:
-        uri = client._validate_credentials("token123", "user123", "example.com")
-    assert uri == "https://example.com", f"Expected 'https://example.com', got '{uri}'"
-    assert len(warning_info) == 1, f"Expected 1 warning, got {len(warning_info)}"
-    assert "Invalid tenant_id: must be purely numeric" in str(warning_info[0].message), f"Unexpected warning message: {warning_info[0].message}"
-    print(f"Warning type: {type(warning_info[0].message).__name__}")
-    print(f"Warning message: {str(warning_info[0].message)}")
-
 @pytest.mark.parametrize("scheme, expected_uri", [
-    ("http://", "http://example.com"),
-    ("https://", "https://example.com"),
+    ("http", "http://example.com"),
+    ("https", "https://example.com"),
 ])
 def test_validate_credentials_schemes(client, scheme, expected_uri):
-    uri = client._validate_credentials("token123", "12345", f"{scheme}example.com")
-    assert uri == expected_uri, f"Expected '{expected_uri}', got '{uri}'"
+    url = client._parse_login_string(f"{scheme}://example.com")
+    assert url.geturl() == expected_uri, f"Expected '{expected_uri}', got '{url}'"
 
 def test_validate_credentials_invalid_scheme(client):
-    with pytest.warns((Warning, DeprecationWarning)) as warning_info:
-        uri = client._validate_credentials("token123", "12345", "ftp://example.com")
-    assert uri == "https://example.com", f"Expected 'https://example.com', got '{uri}'"
-    assert len(warning_info) == 1, f"Expected 1 warning, got {len(warning_info)}"
-    assert "Invalid URI scheme" in str(warning_info[0].message), f"Unexpected warning message: {warning_info[0].message}"
-    print(f"Warning type: {type(warning_info[0].message).__name__}")
-    print(f"Warning message: {str(warning_info[0].message)}")
+    with pytest.raises(ValueError, match="Invalid login string format. Scheme must be http or https"):
+        client._parse_login_string("ftp://12345:token123@example.com")
 
 def test_set_credentials_internal(client):
-    client._set_credentials("token123", "12345", "https://example.com")
-    assert client.token == "token123", f"Expected token 'token123', got '{client.token}'"
-    assert client.tenant_id == "12345", f"Expected tenant_id '12345', got '{client.tenant_id}'"
-    assert client.url == "https://example.com", f"Expected url 'https://example.com', got '{client.url}'"
+    client.set_credentials("https://12345:token123@example.com")
+    assert client.url.password == "token123", f"Expected token 'token123', got '{client.url.password}'"
+    assert client.url.username == "12345", f"Expected tenant_id '12345', got '{client.url.username}'"
+    assert client.url.hostname == "example.com", f"Expected hostname 'example.com', got '{client.url.hostname}'"
+    assert client.url.scheme == "https", f"Expected scheme 'https', got '{client.url.scheme}'"
 
 def test_register_process_success(client):
     mock_response = Mock()
