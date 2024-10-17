@@ -66,22 +66,6 @@ interface TrainingAppState {
   setSelectedRows: (rows: RowData[]) => void;
   addSelectedRow: (row: RowData) => void;
   removeSelectedRow: (processUuid: string) => void;
-
-  // Loki query result state
-  lokiQueryStatus: QueryStatus;
-  lokiQueryData: Record<string, QueryResultData>;
-  resetLokiResults: () => void;
-  appendLokiResult: (processData: RowData, result: PanelData | undefined) => void;
-  setLokiQueryStatus: (status: QueryStatus) => void;
-
-  organizedLokiData: any; // Add the organizedData property
-  setOrganizedLokiData: (data: any) => void; // Add the setOrganizedData function
-
-  organizedData: OrganizedData;
-  setOrganizedData: (newData: OrganizedData) => void;
-  updateOrganizedData: (updateFunction: (prevData: OrganizedData) => OrganizedData) => void;
-  appendToOrganizedData: (section: string, metricName: string, stepName: string, newItem: MetricItem) => void;
-  clearOrganizedData: () => void;
 }
 
 export const useTrainingAppStore = create<TrainingAppState>()((set) => ({
@@ -141,35 +125,4 @@ export const useTrainingAppStore = create<TrainingAppState>()((set) => ({
       }
       return state;
     }),
-
-  // Query result state
-  lokiQueryData: {},
-  lokiQueryStatus: 'idle',
-  resetLokiResults: () => set(() => ({ lokiQueryStatus: 'idle', lokiQueryData: {} })),
-  appendLokiResult: (processData, result) =>
-    set((state) => ({
-      lokiQueryData: { ...state.lokiQueryData, [processData.process_uuid]: { processData, lokiData: result } },
-    })),
-  setLokiQueryStatus: (status: QueryStatus) => set(() => ({ lokiQueryStatus: status })),
-  organizedLokiData: {},
-  setOrganizedLokiData: (data) => set((state) => ({ ...state, organizedLokiData: data })), // Define the setOrganizedData function
-
-  organizedData: {},
-
-  setOrganizedData: (newData) => set({ organizedData: newData }),
-
-  updateOrganizedData: (updateFunction) => 
-    set((state) => ({ organizedData: updateFunction(state.organizedData) })),
-
-  appendToOrganizedData: (section, metricName, stepName, newItem) =>
-    set((state) => {
-      const newOrganizedData = { ...state.organizedData };
-      newOrganizedData[section] = newOrganizedData[section] || {};
-      newOrganizedData[section][metricName] = newOrganizedData[section][metricName] || {};
-      newOrganizedData[section][metricName][stepName] = newOrganizedData[section][metricName][stepName] || [];
-      newOrganizedData[section][metricName][stepName].push(newItem);
-      return { organizedData: newOrganizedData };
-    }),
-
-  clearOrganizedData: () => set({ organizedData: {} }),
 }));
