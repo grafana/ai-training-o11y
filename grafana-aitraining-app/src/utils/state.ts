@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { PanelData } from '@grafana/data';
 
+export type ConfigStatus = 'loading' | 'success' | 'error';
 export type ProcessStatus = 'empty' | 'running' | 'finished' | 'crashed' | 'timed out';
 export type QueryStatus =
   | 'idle'

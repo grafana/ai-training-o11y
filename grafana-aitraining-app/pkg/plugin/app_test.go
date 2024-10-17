@@ -82,8 +82,8 @@ func TestNewApp(t *testing.T) {
 			app, ok := instance.(*App)
 			require.True(t, ok)
 
-			assert.Equal(t, tt.expected["metadataUrl"], app.metadataUrl)
-			assert.Equal(t, tt.expected["stackId"], app.stackId)
+			assert.Equal(t, tt.expected["metadataUrl"], app.metadataURL)
+			assert.Equal(t, tt.expected["stackId"], app.stackID)
 			assert.Equal(t, tt.expected["lokiDatasourceName"], app.lokiDatasourceName)
 			assert.Equal(t, tt.expected["mimirDatasourceName"], app.mimirDatasourceName)
 			assert.Equal(t, tt.expected["metadataToken"], app.metadataToken)
@@ -120,8 +120,8 @@ func TestNewAppWithNonStringValues(t *testing.T) {
 	app, ok := instance.(*App)
 	require.True(t, ok)
 
-	assert.Empty(t, app.metadataUrl)
-	assert.Empty(t, app.stackId)
+	assert.Empty(t, app.metadataURL)
+	assert.Empty(t, app.stackID)
 	assert.Empty(t, app.lokiDatasourceName)
 	assert.Empty(t, app.mimirDatasourceName)
 }

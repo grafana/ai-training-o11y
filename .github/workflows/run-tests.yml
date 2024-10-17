@@ -75,6 +75,31 @@ jobs:
       shell: bash
       working-directory: ${{ env.working-directory }}
 
+  test-o11y-package:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.22'
+
+    - name: Install Hatch
+      run: pip install hatch
+
+    - name: Run tests
+      env:
+        TARGET_OS: linux
+        TARGET_ARCH: amd64
+      working-directory: './o11y'
+      run: hatch test
+
   # You can add more jobs here for other projects if needed
   # For example:
   # test-project2:

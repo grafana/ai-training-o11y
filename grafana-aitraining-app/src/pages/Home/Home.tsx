@@ -3,7 +3,7 @@ import { useParams, useHistory } from 'react-router-dom';
 
 import { GrafanaTheme2 } from '@grafana/data';
 import { PluginPage } from '@grafana/runtime';
-import { useStyles2, Button } from '@grafana/ui';
+import { useStyles2, Button, TextLink, Alert, Spinner } from '@grafana/ui';
 
 import { css } from '@emotion/css';
 
@@ -12,6 +12,7 @@ import { ProcessList } from './components/ProcessList';
 import { prefixRoute } from 'utils/utils.routing';
 import { useTrainingAppStore } from 'utils/state';
 import { useGetProcesses } from 'utils/utils.plugin';
+import { useSettings } from 'hooks/useSettings';
 
 export const Home = () => {
   const trainingAppStore = useTrainingAppStore();
@@ -28,6 +29,7 @@ export const Home = () => {
   const styles = useStyles2(getStyles);
   const params = useParams<{ path: string }>();
   const history = useHistory();
+  const {isReady, error, settings } = useSettings()
 
   let tabFromUrl = params['path'] as 'table' | 'graphs';
 
@@ -93,6 +95,22 @@ export const Home = () => {
     history.push(prefixRoute(view));
   };
 
+  if (!isReady) {
+    return <Spinner />;
+  }
+
+  if (error !== undefined || settings === undefined) {
+    return <Alert title="Error loading"> Error loading app settings. Please try again later. </Alert>;
+  }
+
+  const isCloud = settings.stackId !== undefined && settings.stackId !== '';
+  let metadataUrl = new URL(settings.metadataUrl);
+  if (isCloud) {
+    metadataUrl.username = settings.stackId
+    // Setting the password appears to pass through URL encoding still so <token> is not rendered properly.
+    metadataUrl.password = '--token--'
+  }
+
   return (
     <PluginPage
       renderTitle={() => {
@@ -110,6 +128,18 @@ export const Home = () => {
               Select one or more training processes from the list below.
               <br />
               Then, click <strong>View graphs</strong> and a list of graphs will be generated.
+              <p>
+                To send data to the AI Training o11y app set the following environment variable:
+              </p>
+              <pre>
+                {'GF_AI_TRAINING_CREDS="' + metadataUrl + '"'}
+              </pre>
+              {isCloud ? (
+                // Only generate this section if a stackId is present (running in cloud).
+                <p>
+                  To generate a token create an access policy in the <TextLink href="/a/grafana-auth-app">Grafana auth app</TextLink>.
+                </p>
+              ) : null}
             </div>
             {selectedRows.length < 1 ? (
               <Button disabled={true} variant="primary">

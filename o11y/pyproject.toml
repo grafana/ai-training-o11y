@@ -22,3 +22,6 @@ packages = ["src/o11y", "src/o11y-go"]
 
 [tool.hatch.build.targets.wheel.hooks.custom]
 path = "hatch_build.py"
+
+[tool.pytest.ini_options]
+pythonpath = [ "src" ]

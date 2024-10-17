@@ -9,5 +9,6 @@ apps:
       metadataUrl: http://ai-training-api:8000
       lokiDatasourceName: Loki
       mimirDatasourceName: Mimir
+      stackId: "1"
     secureJsonData:
       metadataToken: secret-key
