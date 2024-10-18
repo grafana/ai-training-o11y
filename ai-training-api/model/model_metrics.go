@@ -5,6 +5,13 @@ import (
 	"gorm.io/gorm"
 )
 
+// StackID is what user we are using
+// ProcessID is the process sending metrics by uuid
+// MetricName is what metric we are logging (e.g., accuracy, loss)
+// StepName is the name of the step in the process (e.g., step, batch, epoch)
+// Separating out by these is important because it only makes sense to graph
+// data for the same metric and step in one panel
+// Step is the step number, which goes on the x-axis, and MetricValue is the y-value.
 type ModelMetrics struct {
     StackID     uint64   `json:"stack_id" gorm:"not null;primaryKey"`
     ProcessID   uuid.UUID `json:"process_id" gorm:"type:char(36);not null;primaryKey;foreignKey:ProcessID;references:ID"` // Foreign key
