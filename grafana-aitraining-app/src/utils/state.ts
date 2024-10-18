@@ -25,26 +25,6 @@ export interface QueryResultData {
   lokiData: PanelData | undefined;
 }
 
-interface MetricItem {
-  MetricName: string;
-  StepName: string;
-  // eslint-disable-next-line @typescript-eslint/array-type
-  fields: Array<{
-    name: string;
-    values: any[];
-    config: Record<string, unknown>;
-  }>;
-  // Add other properties as needed
-}
-
-interface OrganizedData {
-  [section: string]: {
-    [metricName: string]: {
-      [stepName: string]: MetricItem[];
-    };
-  };
-}
-
 interface TrainingAppState {
   // Tab state
   tab: 'table' | 'graphs';
