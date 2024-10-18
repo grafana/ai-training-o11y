@@ -46,16 +46,6 @@ interface TrainingAppState {
   setSelectedRows: (rows: RowData[]) => void;
   addSelectedRow: (row: RowData) => void;
   removeSelectedRow: (processUuid: string) => void;
-
-  // Loki query result state
-  lokiQueryStatus: QueryStatus;
-  lokiQueryData: Record<string, QueryResultData>;
-  resetLokiResults: () => void;
-  appendLokiResult: (processData: RowData, result: PanelData | undefined) => void;
-  setLokiQueryStatus: (status: QueryStatus) => void;
-
-  organizedLokiData: any; // Add the organizedData property
-  setOrganizedLokiData: (data: any) => void; // Add the setOrganizedData function
 }
 
 export const useTrainingAppStore = create<TrainingAppState>()((set) => ({
@@ -115,16 +105,4 @@ export const useTrainingAppStore = create<TrainingAppState>()((set) => ({
       }
       return state;
     }),
-
-  // Query result state
-  lokiQueryData: {},
-  lokiQueryStatus: 'idle',
-  resetLokiResults: () => set(() => ({ lokiQueryStatus: 'idle', lokiQueryData: {} })),
-  appendLokiResult: (processData, result) =>
-    set((state) => ({
-      lokiQueryData: { ...state.lokiQueryData, [processData.process_uuid]: { processData, lokiData: result } },
-    })),
-  setLokiQueryStatus: (status: QueryStatus) => set(() => ({ lokiQueryStatus: status })),
-  organizedLokiData: {},
-  setOrganizedLokiData: (data) => set((state) => ({ ...state, organizedLokiData: data })), // Define the setOrganizedData function
 }));

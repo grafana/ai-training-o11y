@@ -1,7 +1,6 @@
 package api
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -32,9 +31,9 @@ func (app *App) registerAPI(router *mux.Router) {
 	router.HandleFunc("/process/{id}", requestMiddleware(app.getProcess)).Methods("GET")
 	router.HandleFunc("/process/{id}/delete", requestMiddleware(app.deleteProcess)).Methods("POST")
 	router.HandleFunc("/processes", requestMiddleware(app.listProcess)).Methods("GET")
+	router.HandleFunc("/processes/model-metrics", requestMiddleware(app.getModelMetrics)).Methods("POST")
 	router.HandleFunc("/process/{id}/update-metadata", requestMiddleware(app.updateProcessMetadata)).Methods("POST")
 	router.HandleFunc("/process/{id}/model-metrics", requestMiddleware(app.addModelMetrics)).Methods("POST")
-
 	router.HandleFunc("/group/new", requestMiddleware(app.registerNewGroup)).Methods("POST")
 	router.HandleFunc("/group/{id}", requestMiddleware(app.getGroup)).Methods("GET")
 	router.HandleFunc("/groups", requestMiddleware(app.getGroups)).Methods("GET")
@@ -399,49 +398,6 @@ func (a *App) deleteGroup(tenantID string, req *http.Request) (interface{}, erro
 
 	level.Info(a.logger).Log("msg", "deleted group", "tenantID", tenantID, "group_id", groupId)
 	return nil, err
-}
-
-// addModelMetrics proxies logs related model-metrics to Loki.
-func (a *App) addModelMetrics(tenantID string, req *http.Request) (interface{}, error) {
-	// TODO: Integrate with GCom API to find the corresponding Loki TenantID associated
-	// with the tenantID.
-
-	body, err := io.ReadAll(req.Body)
-	if err != nil {
-		return nil, middleware.ErrBadRequest(err)
-	}
-	defer req.Body.Close()
-
-	level.Info(a.logger).Log("msg", "forwarding model-metrics to Loki", "tenantID", tenantID, "body", string(body))
-
-	// Forward the request to the Loki endpoint.
-	httpClient := &http.Client{}
-	lokiEndpoint := a.lokiAddress
-	lokiReq, err := http.NewRequest("POST", lokiEndpoint, bytes.NewBuffer(body))
-	if err != nil {
-		return nil, middleware.ErrBadRequest(err)
-	}
-	lokiReq.Header.Set("Content-Type", "application/json")
-	if a.lokiTenant != "" {
-		level.Info(a.logger).Log("msg", "adding X-Scope-OrgID header to loki request", "received_org_id", req.Header.Get("X-Scope-OrgID"), "forwarded_org_id", a.lokiTenant)
-		lokiReq.Header.Set("X-Scope-OrgID", a.lokiTenant)
-	}
-	lokiResp, err := httpClient.Do(lokiReq)
-	if err != nil {
-		level.Error(a.logger).Log("msg", "error forwarding model-metrics to Loki", "err", err)
-		return nil, middleware.ErrBadRequest(err)
-	}
-	defer lokiResp.Body.Close()
-
-	// Read the response body.
-	lokiRespBody, err := io.ReadAll(lokiResp.Body)
-	if err != nil {
-		level.Error(a.logger).Log("msg", "error reading response body from Loki", "err", err)
-		return nil, middleware.ErrBadRequest(err)
-	}
-
-	// Return the response body.
-	return string(lokiRespBody), nil
 }
 
 func namedParam(req *http.Request, name string) string {

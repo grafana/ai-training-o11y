@@ -3,6 +3,7 @@ import { AppRootProps, DataQueryResponseData } from '@grafana/data';
 
 export interface PluginProps extends AppRootProps {
   getProcesses: () => Promise<DataQueryResponseData>;
+  getModelMetrics: (processUUIDs: string[]) => Promise<DataQueryResponseData>;
 }
 
 export const PluginPropsContext = React.createContext<PluginProps | null>(null);
@@ -19,3 +20,8 @@ export const useGetProcesses = () => {
   const pluginProps = usePluginProps();
   return pluginProps.getProcesses;
 };
+
+export const useGetModelMetrics = () => {
+  const pluginProps = usePluginProps();
+  return pluginProps.getModelMetrics;
+}
