@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -34,7 +33,7 @@ type AddModelMetricsResponse struct {
 
 // Result struct to hold our query results
 type Result struct {
-    StackID     uint64
+    TenantID     string
     ProcessID   uuid.UUID
     MetricName  string
     StepName    string
@@ -81,14 +80,8 @@ func (a *App) addModelMetrics(tenantID string, req *http.Request) (interface{}, 
 		return nil, err
 	}
 
-	// Convert tenantID to uint64 for StackID
-	stackID, err := strconv.ParseUint(tenantID, 10, 64)
-	if err != nil {
-		return nil, middleware.ErrBadRequest(fmt.Errorf("invalid tenant ID: %w", err))
-	}
-
 	// Save the metrics and get the count of created metrics
-	createdCount, err := a.saveModelMetrics(req.Context(), stackID, processID, metricsData)
+	createdCount, err := a.saveModelMetrics(req.Context(), tenantID, processID, metricsData)
 	if err != nil {
 		return nil, err
 	}
@@ -179,7 +172,7 @@ func validateModelMetricRequest(m *ModelMetricsSeries) error {
     return nil
 }
 
-func (a *App) saveModelMetrics(ctx context.Context, stackID uint64, processID uuid.UUID, metricsData []ModelMetricsSeries) (int, error) {
+func (a *App) saveModelMetrics(ctx context.Context, tenantID string, processID uuid.UUID, metricsData []ModelMetricsSeries) (int, error) {
 	var createdCount int
 
 	// Start a transaction
@@ -191,7 +184,7 @@ func (a *App) saveModelMetrics(ctx context.Context, stackID uint64, processID uu
 	for _, metricData := range metricsData {
 		for _, point := range metricData.Points {
 			metric := model.ModelMetrics{
-				StackID:     stackID,
+				TenantID:     tenantID,
 				ProcessID:   processID,
 				MetricName:  metricData.MetricName,
 				StepName:    metricData.StepName,
@@ -216,7 +209,7 @@ func (a *App) saveModelMetrics(ctx context.Context, stackID uint64, processID uu
 	return createdCount, nil
 }
 
-func getCompleteMetrics(ctx context.Context, db *gorm.DB, stackID uint64, processes []string) ([]Result, error) {
+func getCompleteMetrics(ctx context.Context, db *gorm.DB, tenantID string, processes []string) ([]Result, error) {
     // Convert []string to []uuid.UUID
     uuidProcesses := make([]uuid.UUID, 0, len(processes))
     for _, p := range processes {
@@ -233,12 +226,12 @@ func getCompleteMetrics(ctx context.Context, db *gorm.DB, stackID uint64, proces
 			WITH process_metrics AS (
 			SELECT DISTINCT process_id, metric_name, step_name
 			FROM model_metrics
-			WHERE stack_id = ? AND process_id IN ?
+			WHERE tenant_id = ? AND process_id IN ?
 		),
 		metric_steps AS (
 			SELECT metric_name, step_name, step
 			FROM model_metrics
-			WHERE stack_id = ? AND process_id IN ?
+			WHERE tenant_id = ? AND process_id IN ?
 		),
 		all_combinations AS (
 			SELECT DISTINCT
@@ -260,7 +253,7 @@ func getCompleteMetrics(ctx context.Context, db *gorm.DB, stackID uint64, proces
 		FROM 
 			all_combinations ac
 		LEFT JOIN
-			model_metrics d ON d.stack_id = ? 
+			model_metrics d ON d.tenant_id = ? 
 							AND d.process_id = ac.process_id 
 							AND d.metric_name = ac.metric_name 
 							AND d.step_name = ac.step_name
@@ -269,7 +262,7 @@ func getCompleteMetrics(ctx context.Context, db *gorm.DB, stackID uint64, proces
 			ac.metric_name ASC, ac.step_name ASC, ac.step ASC, ac.process_id ASC
     `
 
-    err := db.WithContext(ctx).Raw(query, stackID, uuidProcesses, stackID, uuidProcesses, stackID).Scan(&results).Error
+    err := db.WithContext(ctx).Raw(query, tenantID, uuidProcesses, tenantID, uuidProcesses, tenantID).Scan(&results).Error
     if err != nil {
         return nil, fmt.Errorf("error executing query: %v", err)
     }
@@ -378,13 +371,7 @@ func (a *App) getModelMetrics(tenantID string, req *http.Request) (interface{}, 
 		return nil, middleware.ErrBadRequest(fmt.Errorf("invalid JSON: %v", err))
 	}
 
-	// Convert tenantID to uint64 for StackID
-	stackID, err := strconv.ParseUint(tenantID, 10, 64)
-	if err != nil {
-		return nil, middleware.ErrBadRequest(fmt.Errorf("invalid tenant ID: %w", err))
-	}
-
-    results, err := getCompleteMetrics(req.Context(), a.db(req.Context()), stackID, processes)
+    results, err := getCompleteMetrics(req.Context(), a.db(req.Context()), tenantID, processes)
     if err != nil {
         return nil, fmt.Errorf("error getting complete metrics: %w", err)
     }

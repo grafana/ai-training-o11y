@@ -304,15 +304,15 @@ func TestTransformMetricsData(t *testing.T) {
 	}{
 		name: "Mixed metrics with different sections and step names",
 		input: []Result{
-			{StackID: 1, ProcessID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), MetricName: "training/accuracy", StepName: "Epoch", Step: 1, MetricValue: strPtr("0.75")},
-			{StackID: 1, ProcessID: uuid.MustParse("22222222-2222-2222-2222-222222222222"), MetricName: "training/accuracy", StepName: "Epoch", Step: 1, MetricValue: strPtr("0.70")},
-			{StackID: 1, ProcessID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), MetricName: "training/accuracy", StepName: "Epoch", Step: 2, MetricValue: strPtr("0.80")},
-			{StackID: 1, ProcessID: uuid.MustParse("22222222-2222-2222-2222-222222222222"), MetricName: "training/accuracy", StepName: "Epoch", Step: 2, MetricValue: strPtr("0.78")},
-			{StackID: 1, ProcessID: uuid.MustParse("33333333-3333-3333-3333-333333333333"), MetricName: "evaluation/f1_score", StepName: "Step", Step: 1, MetricValue: strPtr("0.65")},
-			{StackID: 1, ProcessID: uuid.MustParse("33333333-3333-3333-3333-333333333333"), MetricName: "evaluation/f1_score", StepName: "Step", Step: 2, MetricValue: strPtr("0.70")},
-			{StackID: 1, ProcessID: uuid.MustParse("44444444-4444-4444-4444-444444444444"), MetricName: "custom_metric", StepName: "Iteration", Step: 1, MetricValue: strPtr("10")},
-			{StackID: 1, ProcessID: uuid.MustParse("44444444-4444-4444-4444-444444444444"), MetricName: "custom_metric", StepName: "Iteration", Step: 2, MetricValue: strPtr("15")},
-			{StackID: 1, ProcessID: uuid.MustParse("55555555-5555-5555-5555-555555555555"), MetricName: "test/accuracy", StepName: "Step", Step: 1, MetricValue: strPtr("0.9")},
+			{TenantID: "1", ProcessID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), MetricName: "training/accuracy", StepName: "Epoch", Step: 1, MetricValue: strPtr("0.75")},
+			{TenantID: "1", ProcessID: uuid.MustParse("22222222-2222-2222-2222-222222222222"), MetricName: "training/accuracy", StepName: "Epoch", Step: 1, MetricValue: strPtr("0.70")},
+			{TenantID: "1", ProcessID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), MetricName: "training/accuracy", StepName: "Epoch", Step: 2, MetricValue: strPtr("0.80")},
+			{TenantID: "1", ProcessID: uuid.MustParse("22222222-2222-2222-2222-222222222222"), MetricName: "training/accuracy", StepName: "Epoch", Step: 2, MetricValue: strPtr("0.78")},
+			{TenantID: "1", ProcessID: uuid.MustParse("33333333-3333-3333-3333-333333333333"), MetricName: "evaluation/f1_score", StepName: "Step", Step: 1, MetricValue: strPtr("0.65")},
+			{TenantID: "1", ProcessID: uuid.MustParse("33333333-3333-3333-3333-333333333333"), MetricName: "evaluation/f1_score", StepName: "Step", Step: 2, MetricValue: strPtr("0.70")},
+			{TenantID: "1", ProcessID: uuid.MustParse("44444444-4444-4444-4444-444444444444"), MetricName: "custom_metric", StepName: "Iteration", Step: 1, MetricValue: strPtr("10")},
+			{TenantID: "1", ProcessID: uuid.MustParse("44444444-4444-4444-4444-444444444444"), MetricName: "custom_metric", StepName: "Iteration", Step: 2, MetricValue: strPtr("15")},
+			{TenantID: "1", ProcessID: uuid.MustParse("55555555-5555-5555-5555-555555555555"), MetricName: "test/accuracy", StepName: "Step", Step: 1, MetricValue: strPtr("0.9")},
 		},
 		expected: GetModelMetricsResponse{
 			Sections: map[string][]Panel{

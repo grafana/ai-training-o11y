@@ -12,7 +12,7 @@ import (
 // data for the same metric and step in one panel
 // Step is the step number, which goes on the x-axis, and MetricValue is the y-value.
 type ModelMetrics struct {
-    StackID     uint64   `json:"stack_id" gorm:"not null;primaryKey"`
+    TenantID     string   `json:"stack_id" gorm:"not null;primaryKey"`
     ProcessID   uuid.UUID `json:"process_id" gorm:"type:char(36);not null;primaryKey;foreignKey:ProcessID;references:ID"` // Foreign key
     MetricName  string   `json:"metric_name" gorm:"size:32;not null;primaryKey"`
     StepName    string   `json:"step_name" gorm:"size:32;not null;primaryKey"`
