@@ -27,11 +27,17 @@ export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
   const getModelMetrics = useGetModelMetrics();
   const [ metrics, setMetrics ] = React.useState<any>();
   const [ loading, setLoading ] = React.useState<LoadingState>(LoadingState.NotStarted);
+  const [ colors, setColors ] = React.useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     if (rows.length > 0) {
       setLoading(LoadingState.Loading);
       const rowUUIDs = rows.map((row) => row.process_uuid);
+      let newColors: Map<string, string> = new Map();
+      rowUUIDs.forEach((uuid, i) => {
+        newColors.set(uuid, palette[i % palette.length]);
+      });
+      setColors(newColors);
       getModelMetrics(rowUUIDs).then((metrics) => {
         if (metrics?.status !== "success") {
           setLoading(LoadingState.Error);
@@ -54,8 +60,7 @@ export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
         to: endTime.toISOString(),
       },
     };
-    let i = 0;
-    const fields = panelData.series.map((s: any): DataFrame[] => { 
+    const fields = panelData.series.map((s: any): DataFrame[] => {
       s.values = [
         s.values[0],
         ...s.values.slice(1).map((v: string | undefined) => {
@@ -65,14 +70,12 @@ export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
           return parseFloat(v)
       })
       ]
-      let color = palette[i % palette.length];
-      i += 1;
       return {
         ...s,
         config: {
           color: {
             mode: 'fixed',
-            fixedColor: color,
+            fixedColor: colors.get(s.name) || palette[0],
           },
         }
       }
