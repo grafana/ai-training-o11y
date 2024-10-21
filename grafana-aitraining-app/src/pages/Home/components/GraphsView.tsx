@@ -60,10 +60,10 @@ export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
         to: endTime.toISOString(),
       },
     };
+    const unit = panelData.series[0].name;
     const fields = panelData.series.map((s: any): DataFrame[] => {
       s.values = [
-        s.values[0],
-        ...s.values.slice(1).map((v: string | undefined) => {
+        ...s.values.map((v: string | undefined) => {
           if (v === undefined || v === null) {
             return undefined
           }
@@ -82,7 +82,7 @@ export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
     });
     return {
       pluginId: 'trend',
-      title: panelData.title,
+      title: `${panelData.title} per ${unit}`,
       data: {
         state: loading,
         timeRange: dummyTimeRange,
