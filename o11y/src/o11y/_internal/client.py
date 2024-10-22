@@ -123,17 +123,11 @@ class Client:
             self.step += 1
 
         step_name, step_value = next(iter(x_axis.items()))
-        metric_name, metric_value = next(iter(log.items()))
 
         json_data = [{
-            "metric_name": metric_name,
             "step_name": step_name,
-            "points": [
-                {
-                    "step": step_value,
-                    "value": metric_value
-                }
-            ]
+            "step_value": step_value,
+            "metrics": log
         }]
 
         url = f'{self.url.geturl()}/api/v1/process/{self.process_uuid}/model-metrics'

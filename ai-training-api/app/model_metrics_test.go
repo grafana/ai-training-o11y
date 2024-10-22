@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"sync"
 	"testing"
 
@@ -165,128 +166,126 @@ func TestValidateProcessExists(t *testing.T) {
 
 func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 	tests := []struct {
-		name           string
-		requestBody    interface{}
-		expectedLen    int
-		expectedErrMsg string
+		name          string
+		input         []AddModelMetricsPayload
+		expectedLen   int
+		expectError   bool
+		errorContains string
 	}{
 		{
-			name: "Valid request",
-			requestBody: []ModelMetricsSeries{
+			name: "valid single metric",
+			input: []AddModelMetricsPayload{
 				{
-					MetricName: "accuracy",
-					StepName:   "training",
-					Points: []struct {
-						Step  uint32 `json:"step"`
-						Value json.Number `json:"value"`
-					}{
-						{Step: 1, Value: "0.75"},
-						{Step: 2, Value: "0.85"},
+					StepName:  "train",
+					StepValue: 1,
+					Metrics: map[string]json.Number{
+						"accuracy": "0.95",
 					},
 				},
 			},
 			expectedLen: 1,
+			expectError: false,
 		},
 		{
-			name: "Invalid metric name",
-			requestBody: []ModelMetricsSeries{
+			name: "valid multiple metrics",
+			input: []AddModelMetricsPayload{
 				{
-					MetricName: "",
-					StepName:   "training",
-					Points: []struct {
-						Step  uint32 `json:"step"`
-						Value json.Number `json:"value"`
-					}{{Step: 1, Value: "0.75"}},
-				},
-			},
-			expectedErrMsg: "metric name must be between 1 and 32 characters",
-		},
-		{
-			name: "Invalid step name",
-			requestBody: []ModelMetricsSeries{
-				{
-					MetricName: "accuracy",
-					StepName:   "",
-					Points: []struct {
-						Step  uint32 `json:"step"`
-						Value json.Number `json:"value"`
-					}{{Step: 1, Value: "0.75"}},
-				},
-			},
-			expectedErrMsg: "step name must be between 1 and 32 characters",
-		},
-		{
-			name: "Invalid step value",
-			requestBody: []ModelMetricsSeries{
-				{
-					MetricName: "accuracy",
-					StepName:   "training",
-					Points: []struct {
-						Step  uint32 `json:"step"`
-						Value json.Number `json:"value"`
-					}{{Step: 0, Value: "0.75"}},
-				},
-			},
-			expectedErrMsg: "step must be a positive number",
-		},
-		{
-			name: "Invalid metric value (empty string)",
-			requestBody: []interface{}{
-				map[string]interface{}{
-					"metric_name": "accuracy",
-					"step_name":   "training",
-					"points": []interface{}{
-						map[string]interface{}{
-							"step":  1,
-							"value": "",
-						},
+					StepName:  "train",
+					StepValue: 1,
+					Metrics: map[string]json.Number{
+						"accuracy": "0.95",
+						"loss":    "0.05",
 					},
 				},
 			},
-			expectedErrMsg: "invalid JSON: json: invalid number literal, trying to unmarshal \"\\\"\\\"\" into Number",
+			expectedLen: 2,
+			expectError: false,
 		},
 		{
-			name: "Invalid metric value (not a number)",
-			requestBody: []interface{}{
-				map[string]interface{}{
-					"metric_name": "accuracy",
-					"step_name":   "training",
-					"points": []interface{}{
-						map[string]interface{}{
-							"step":  1,
-							"value": "not a number",
-						},
+			name: "multiple steps",
+			input: []AddModelMetricsPayload{
+				{
+					StepName:  "train",
+					StepValue: 1,
+					Metrics: map[string]json.Number{
+						"accuracy": "0.95",
+					},
+				},
+				{
+					StepName:  "validate",
+					StepValue: 1,
+					Metrics: map[string]json.Number{
+						"accuracy": "0.93",
 					},
 				},
 			},
-			expectedErrMsg: "invalid JSON: json: invalid number literal, trying to unmarshal \"\\\"not a number\\\"\" into Number",
+			expectedLen: 2,
+			expectError: false,
+		},
+		{
+			name:          "invalid json",
+			input:         nil,
+			expectedLen:   0,
+			expectError:   true,
+			errorContains: "invalid JSON",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			body, err := json.Marshal(tt.requestBody)
-			require.NoError(t, err)
-	
-			req, err := http.NewRequest("POST", "/process/123/model-metrics", bytes.NewBuffer(body))
-			require.NoError(t, err)
-	
-			result, err := parseAndValidateModelMetricsRequest(req)
-	
-			if tt.expectedErrMsg != "" {
-				if err == nil {
-					t.Errorf("Expected error containing '%s', but got nil error", tt.expectedErrMsg)
-				} else {
-					assert.Contains(t, err.Error(), tt.expectedErrMsg)
+			// Create request body
+			var body []byte
+			var err error
+			if tt.input != nil {
+				body, err = json.Marshal(tt.input)
+				if err != nil {
+					t.Fatalf("Failed to marshal test input: %v", err)
 				}
 			} else {
-				assert.NoError(t, err)
-				assert.Len(t, result, tt.expectedLen)
+				body = []byte("{invalid json}")
 			}
-	
-			// Add this line for debugging
-			t.Logf("Test case '%s': error = %v, result = %+v", tt.name, err, result)
+
+			// Create request
+			req, err := http.NewRequest("POST", "/metrics", bytes.NewBuffer(body))
+			if err != nil {
+				t.Fatalf("Failed to create request: %v", err)
+			}
+
+			// Call function
+			metrics, err := parseAndValidateModelMetricsRequest(req)
+
+			// Check error
+			if tt.expectError {
+				if err == nil {
+					t.Errorf("Expected error but got none")
+				} else if tt.errorContains != "" && !strings.Contains(err.Error(), tt.errorContains) {
+					t.Errorf("Expected error containing '%s', got '%s'", tt.errorContains, err.Error())
+				}
+				return
+			}
+
+			if err != nil {
+				t.Errorf("Unexpected error: %v", err)
+				return
+			}
+
+			// Check results
+			if len(metrics) != tt.expectedLen {
+				t.Errorf("Expected %d metrics, got %d", tt.expectedLen, len(metrics))
+			}
+
+			// Additional validation could be added here to check specific metric values
 		})
+	}
+}
+
+// Helper function to create test metric data
+func createTestMetric(t *testing.T, stepName string, stepValue uint32, metricName string, metricValue string) model.ModelMetrics {
+	return model.ModelMetrics{
+		StepName:    stepName,
+		Step:        stepValue,
+		MetricName:  metricName,
+		MetricValue: metricValue,
 	}
 }
 

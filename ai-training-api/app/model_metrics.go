@@ -17,13 +17,10 @@ import (
 )
 
 // Incoming format is an array of these
-type ModelMetricsSeries struct {
-	MetricName string `json:"metric_name"`
-	StepName   string `json:"step_name"`
-	Points     []struct {
-		Step  uint32 `json:"step"`
-		Value json.Number `json:"value"`
-	} `json:"points"`
+type AddModelMetricsPayload struct {
+    StepName  string            `json:"step_name"`
+    StepValue uint32            `json:"step_value"`
+    Metrics   map[string]json.Number `json:"metrics"`
 }
 
 type AddModelMetricsResponse struct {
@@ -130,8 +127,8 @@ func (a *App) validateProcessExists(ctx context.Context, processID uuid.UUID) er
 	return nil
 }
 
-func parseAndValidateModelMetricsRequest(req *http.Request) ([]ModelMetricsSeries, error) {
-    var metricsData []ModelMetricsSeries
+func parseAndValidateModelMetricsRequest(req *http.Request) ([]model.ModelMetrics, error) {
+    var metricsData []AddModelMetricsPayload
 
     decoder := json.NewDecoder(req.Body)
 
@@ -139,40 +136,46 @@ func parseAndValidateModelMetricsRequest(req *http.Request) ([]ModelMetricsSerie
         return nil, middleware.ErrBadRequest(fmt.Errorf("invalid JSON: %v", err))
     }
 
-	fmt.Println(metricsData)
-
-    for _, metric := range metricsData {
-        if err := validateModelMetricRequest(&metric); err != nil {
-            return nil, middleware.ErrBadRequest(err)
+    var metrics []model.ModelMetrics
+    
+    for _, item := range metricsData {
+        for metricName, metricValue := range item.Metrics {
+            metric := model.ModelMetrics{
+                MetricName:  metricName,
+                StepName:   item.StepName,
+                Step:       item.StepValue,
+                MetricValue: metricValue.String(),
+            }
+            
+            if err := validateModelMetric(&metric); err != nil {
+                return nil, middleware.ErrBadRequest(fmt.Errorf("invalid metric: %v", err))
+            }
+            
+            metrics = append(metrics, metric)
         }
     }
 
-    return metricsData, nil
+    return metrics, nil
 }
 
-func validateModelMetricRequest(m *ModelMetricsSeries) error {
+func validateModelMetric(m *model.ModelMetrics) error {
     if len(m.MetricName) == 0 || len(m.MetricName) > 32 {
         return fmt.Errorf("metric name must be between 1 and 32 characters")
     }
     if len(m.StepName) == 0 || len(m.StepName) > 32 {
         return fmt.Errorf("step name must be between 1 and 32 characters")
     }
-    for _, point := range m.Points {
-        if point.Step == 0 {
-            return fmt.Errorf("step must be a positive number")
-        }
-        if point.Value.String() == "" {
-            return fmt.Errorf("metric value cannot be empty")
-        }
-        // Validate that Value is a valid number
-        if _, err := point.Value.Float64(); err != nil {
-            return fmt.Errorf("invalid numeric value: %v", err)
-        }
-    }
+
+	if m.Step == 0 {
+		return fmt.Errorf("step must be a positive number")
+	}
+	if m.MetricValue == "" {
+		return fmt.Errorf("metric value cannot be empty")
+	}
     return nil
 }
 
-func (a *App) saveModelMetrics(ctx context.Context, tenantID string, processID uuid.UUID, metricsData []ModelMetricsSeries) (int, error) {
+func (a *App) saveModelMetrics(ctx context.Context, tenantID string, processID uuid.UUID, metricsData []model.ModelMetrics) (int, error) {
 	var createdCount int
 
 	// Start a transaction
@@ -181,24 +184,16 @@ func (a *App) saveModelMetrics(ctx context.Context, tenantID string, processID u
 		return 0, fmt.Errorf("error starting transaction: %w", tx.Error)
 	}
 
-	for _, metricData := range metricsData {
-		for _, point := range metricData.Points {
-			metric := model.ModelMetrics{
-				TenantID:     tenantID,
-				ProcessID:   processID,
-				MetricName:  metricData.MetricName,
-				StepName:    metricData.StepName,
-				Step:        point.Step,
-				MetricValue: point.Value.String(),
-			}
+	for _, metric := range(metricsData) {
+		metric.TenantID = tenantID
+		metric.ProcessID = processID
 
-			// Save to database
-			if err := tx.Create(&metric).Error; err != nil {
-				tx.Rollback()
-				return 0, fmt.Errorf("error creating model metric: %w", err)
-			}
-			createdCount++
+		// Save to database
+		if err := tx.Create(&metric).Error; err != nil {
+			tx.Rollback()
+			return 0, fmt.Errorf("error creating model metric: %w", err)
 		}
+		createdCount++
 	}
 
 	// Commit the transaction
@@ -223,7 +218,7 @@ func getCompleteMetrics(ctx context.Context, db *gorm.DB, tenantID string, proce
     var results []Result
 
     query := `
-			WITH process_metrics AS (
+		WITH process_metrics AS (
 			SELECT DISTINCT process_id, metric_name, step_name
 			FROM model_metrics
 			WHERE tenant_id = ? AND process_id IN ?
@@ -258,15 +253,15 @@ func getCompleteMetrics(ctx context.Context, db *gorm.DB, tenantID string, proce
 							AND d.metric_name = ac.metric_name 
 							AND d.step_name = ac.step_name
 							AND d.step = ac.step
-		ORDER BY 
-			ac.metric_name ASC, ac.step_name ASC, ac.step ASC, ac.process_id ASC
+		ORDER BY ac.metric_name ASC, ac.step_name ASC, ac.step ASC, ac.process_id ASC
     `
 
     err := db.WithContext(ctx).Raw(query, tenantID, uuidProcesses, tenantID, uuidProcesses, tenantID).Scan(&results).Error
     if err != nil {
         return nil, fmt.Errorf("error executing query: %v", err)
     }
-
+	// Log the results for debugging
+	fmt.Println(results)
     return results, nil
 }
 
@@ -285,6 +280,8 @@ func transformMetricsData(results []Result) GetModelMetricsResponse {
 		}
         groupedData[r.MetricName][r.StepName] = append(groupedData[r.MetricName][r.StepName], r)
     }
+
+	fmt.Println(groupedData)
 
 	response := GetModelMetricsResponse{
         Sections: make(map[string][]Panel),
