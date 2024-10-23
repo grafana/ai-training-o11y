@@ -1,6 +1,6 @@
 [project]
 name = "o11y"
-version = "0.1.0"
+version = "0.1.1"
 description = "Exporter for Grafana's AI Observability platform"
 authors = [{name = "Grafana Labs", email = "info@grafana.com"}]
 readme = "README.md"
