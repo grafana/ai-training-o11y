@@ -1,6 +1,6 @@
 {
   "name": "grafana-aitraining-app",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Track compare and visualize your ml models with 5 lines of code",
   "scripts": {
     "build": "webpack -c ./.config/webpack/webpack.config.ts --env production",
