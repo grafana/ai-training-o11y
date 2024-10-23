@@ -18,6 +18,7 @@ class Client:
     def __init__(self):
         self.process_uuid = None
         self.user_metadata = None
+        self.step = 1
         # TODO: Should we require a URL when creating the client instead of via set_credentials?
         self.url: ParseResult = ParseResult('', '', '', '', '', '')
         login_string = os.environ.get('GF_AI_TRAINING_CREDS')
@@ -50,6 +51,7 @@ class Client:
         if self.process_uuid:
             self.process_uuid = None
             self.user_metadata = None
+            self.step = 1
 
         headers = {
             'Content-Type': 'application/json'
@@ -113,35 +115,20 @@ class Client:
         if not self.process_uuid:
             logger.error("No process registered, unable to send logs")
             return False
-        
-        timestamp = str(time.time_ns())
 
-        metadata: Dict[str, Any] = {
-            "process_uuid": self.process_uuid,
-            "type": "model-metrics"
-        }
+        if not x_axis:
+            x_axis = {
+                "step": self.step
+            }
+            self.step += 1
 
-        if x_axis:
-            x_key = list(x_axis.keys())[0]
-            metadata['x_axis'] = x_key
-            metadata['x_value'] = str(x_axis[x_key])
+        step_name, step_value = next(iter(x_axis.items()))
 
-        json_data = {
-            "streams": [
-                {
-                    "stream": {
-                        "job": "o11y",
-                    },
-                    "values": [
-                        [
-                            timestamp,
-                            json.dumps(log),
-                            metadata,
-                        ]
-                    ]
-                }
-            ]
-        }
+        json_data = [{
+            "step_name": step_name,
+            "step_value": step_value,
+            "metrics": log
+        }]
 
         url = f'{self.url.geturl()}/api/v1/process/{self.process_uuid}/model-metrics'
 

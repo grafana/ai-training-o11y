@@ -8,7 +8,7 @@ type JSONArray = JSONValue[];
 type JSONValue = JSONPrimitive | JSONObject | JSONArray;
 
 // Actually make a request from the plugin backend
-function doRequest(fetchOptions: any): Promise<DataQueryResponseData> {
+export function doRequest(fetchOptions: any): Promise<DataQueryResponseData> {
   return lastValueFrom(getBackendSrv().fetch(fetchOptions)).then((response) => {
     if (!response.ok) {
       throw response.data;

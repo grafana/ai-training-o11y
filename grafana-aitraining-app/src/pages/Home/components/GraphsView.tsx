@@ -1,10 +1,14 @@
-import React, { useEffect, useRef } from 'react';
-import { useProcessQueries } from 'hooks/useProcessQueries';
-import { useTrainingAppStore, RowData } from 'utils/state';
-import { reshapeModelMetrics } from 'utils/reshapeModelMetrics';
-import { SceneGraph } from './SceneGraph';
-import { PanelData, LoadingState, dateTime, TimeRange } from '@grafana/data';
+import React, { useEffect } from 'react';
+import { PanelData, LoadingState, DataFrame, dateTime, TimeRange } from '@grafana/data';
 import { ControlledCollapse } from '@grafana/ui';
+import { config } from '@grafana/runtime';
+
+import { SceneGraph } from './SceneGraph';
+import { RowData } from 'utils/state';
+
+import { useGetModelMetrics } from 'utils/utils.plugin';
+
+const palette = config.theme2.visualization.palette;
 
 export interface MetricPanel {
   pluginId: string;
@@ -16,135 +20,94 @@ interface GraphsProps {
   rows: RowData[];
 }
 
+
+
 export const GraphsView: React.FC<GraphsProps> = ({ rows }) => {
-  const { lokiQueryStatus, lokiQueryData, organizedLokiData, resetLokiResults, setOrganizedLokiData } =
-    useTrainingAppStore();
-  const { isReady, runQueries } = useProcessQueries();
-  const shouldRunQueries = useRef(true);
+  // WIP:
+  const getModelMetrics = useGetModelMetrics();
+  const [ metrics, setMetrics ] = React.useState<any>();
+  const [ loading, setLoading ] = React.useState<LoadingState>(LoadingState.NotStarted);
+  const [ colors, setColors ] = React.useState<Map<string, string>>(new Map());
 
   useEffect(() => {
-    if (isReady && rows.length > 0 && shouldRunQueries.current) {
-      shouldRunQueries.current = false;
-      resetLokiResults();
-      runQueries();
+    if (rows.length > 0) {
+      setLoading(LoadingState.Loading);
+      const rowUUIDs = rows.map((row) => row.process_uuid);
+      let newColors: Map<string, string> = new Map();
+      rowUUIDs.forEach((uuid, i) => {
+        newColors.set(uuid, palette[i % palette.length]);
+      });
+      setColors(newColors);
+      getModelMetrics(rowUUIDs).then((metrics) => {
+        if (metrics?.status !== "success") {
+          setLoading(LoadingState.Error);
+          return;
+        } 
+        setMetrics(metrics?.data?.sections);
+        setLoading(LoadingState.Done);
+      });
     }
-  }, [isReady, rows, resetLokiResults, runQueries]);
+  }, [rows, getModelMetrics]);
 
-  useEffect(() => {
-    shouldRunQueries.current = true;
-  }, [rows]);
-
-  useEffect(() => {
-    if (lokiQueryStatus === 'success' && Object.keys(lokiQueryData).length > 0) {
-      const organized = reshapeModelMetrics(lokiQueryData);
-      setOrganizedLokiData(organized);
-    }
-  }, [lokiQueryStatus, lokiQueryData, setOrganizedLokiData]);
-
-  if (!isReady) {
-    return <div>Loading...</div>;
-  }
-
-  if (lokiQueryStatus === 'loading') {
-    return (
-      <div>
-        Running...
-      </div>
-    );
-  }
-
-  if (!organizedLokiData || !organizedLokiData.data || Object.keys(organizedLokiData.data).length === 0) {
-    return <div>No data available</div>;
-  }
-
-  const startTime = organizedLokiData.meta.startTime ? dateTime(organizedLokiData.meta.startTime) : dateTime();
-  const endTime = organizedLokiData.meta.endTime ? dateTime(organizedLokiData.meta.endTime) : dateTime();
-
-  const tmpTimeRange: TimeRange = {
-    from: startTime,
-    to: endTime,
-    raw: {
-      from: startTime.toISOString(),
-      to: endTime.toISOString(),
-    },
-  };
-
-  const createPanelList = (section: string): MetricPanel[] => {
-    if (!organizedLokiData.meta.sections[section]) {
-      return [];
-    }
-    return organizedLokiData.meta.sections[section].map((key: string) => {
-      if (!organizedLokiData.data[section] || !organizedLokiData.data[section][key]) {
-        return {
-          pluginId: 'xyplot',
-          title: key,
-          data: {
-            state: LoadingState.Error,
-            series: [],
-            timeRange: tmpTimeRange,
-          },
-        };
-      }
-      const panel: PanelData = {
-        state: LoadingState.Done,
-        timeRange: tmpTimeRange,
-        series: [organizedLokiData.data[section][key]],
-      };
+  function makePanelFromData(panelData: any) {
+    const startTime = dateTime();
+    const endTime = dateTime();
+    const dummyTimeRange: TimeRange = {
+      from: startTime,
+      to: endTime,
+      raw: {
+        from: startTime.toISOString(),
+        to: endTime.toISOString(),
+      },
+    };
+    const unit = panelData.series[0].name;
+    const fields = panelData.series.map((s: any): DataFrame[] => {
+      s.values = [
+        ...s.values.map((v: string | undefined) => {
+          if (v === undefined || v === null) {
+            return undefined
+          }
+          return parseFloat(v)
+      })
+      ]
       return {
-        pluginId: 'trend',
-        title: key,
-        data: panel,
-      };
+        ...s,
+        config: {
+          color: {
+            mode: 'fixed',
+            fixedColor: colors.get(s.name) || palette[0],
+          },
+        }
+      }
     });
-  };
+    return {
+      pluginId: 'trend',
+      title: `${panelData.title} per ${unit}`,
+      data: {
+        state: loading,
+        timeRange: dummyTimeRange,
+        series: [{
+          fields,
+          length: fields.length
+        }],
+      },
+    }
+  }
 
   return (
     <div style={{ marginTop: '10px' }}>
-      {organizedLokiData.meta.sections && Object.entries(organizedLokiData.meta.sections).map(([section, keys]) => (
+    {loading === LoadingState.Loading && <div>Loading...</div>}
+    {metrics && Object.keys(metrics).map((section) => {
+        return (
         <ControlledCollapse
-          key={section}
-          isOpen={true}
-          label={`${section}`}
+            key={section}
+            isOpen={true}
+            label={`${section}`}
         >
-          <SceneGraph panels={createPanelList(section)} />
+            {<SceneGraph panels={metrics[section].map(makePanelFromData)} />}
         </ControlledCollapse>
-      ))}
-
-      {/* Debug section (hidden) */}
-      <div style={{ display: 'none' }}>
-        <button
-          onClick={() => {
-            resetLokiResults();
-            shouldRunQueries.current = true;
-          }}
-        >
-          Reset Results
-        </button>
-
-        <div style={{ marginBottom: '20px' }}>
-          <h3>Organized Data:</h3>
-          {organizedLokiData ? (
-            <pre>{JSON.stringify(organizedLokiData, null, 2)}</pre>
-          ) : (
-            <p>No organized data available</p>
-          )}
-        </div>
-
-        <div style={{ marginBottom: '20px' }}>
-          <h3>Query Data:</h3>
-          {Object.keys(lokiQueryData).map((key) => (
-            <React.Fragment key={key}>
-              <h4>Results for process: {key}</h4>
-              <pre>{JSON.stringify(lokiQueryData[key].lokiData?.series[0].fields, null, 2)}</pre>
-            </React.Fragment>
-          ))}
-        </div>
-
-        <div>
-          <h3>Selected Rows:</h3>
-          <pre>{JSON.stringify(rows, null, 2)}</pre>
-        </div>
-      </div>
+        );
+    })}
     </div>
   );
 };
