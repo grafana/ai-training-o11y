@@ -278,8 +278,6 @@ func transformMetricsData(results []Result) GetModelMetricsResponse {
 		groupedData[r.MetricName][r.StepName] = append(groupedData[r.MetricName][r.StepName], r)
 	}
 
-	fmt.Println(groupedData)
-
 	response := GetModelMetricsResponse{
 		Sections: make(map[string][]Panel),
 	}
