@@ -55,7 +55,7 @@ type Panel struct {
 }
 
 type GetModelMetricsResponse struct {
-    Sections map[string][]Panel `json:"sections"`
+	Sections map[string][]Panel `json:"sections"`
 }
 
 
@@ -253,15 +253,13 @@ func getCompleteMetrics(ctx context.Context, db *gorm.DB, tenantID string, proce
 							AND d.metric_name = ac.metric_name 
 							AND d.step_name = ac.step_name
 							AND d.step = ac.step
-		ORDER BY ac.metric_name ASC, ac.step_name ASC, ac.step ASC, ac.process_id ASC
+		ORDER BY ac.step ASC
     `
 
     err := db.WithContext(ctx).Raw(query, tenantID, uuidProcesses, tenantID, uuidProcesses, tenantID).Scan(&results).Error
     if err != nil {
         return nil, fmt.Errorf("error executing query: %v", err)
     }
-	// Log the results for debugging
-	fmt.Println(results)
     return results, nil
 }
 
