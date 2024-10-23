@@ -18,46 +18,45 @@ import (
 
 // Incoming format is an array of these
 type AddModelMetricsPayload struct {
-    StepName  string            `json:"step_name"`
-    StepValue uint32            `json:"step_value"`
-    Metrics   map[string]json.Number `json:"metrics"`
+	StepName  string                 `json:"step_name"`
+	StepValue uint32                 `json:"step_value"`
+	Metrics   map[string]json.Number `json:"metrics"`
 }
 
 type AddModelMetricsResponse struct {
-    Message        string `json:"message"`
-    MetricsCreated uint32    `json:"metricsCreated"`
+	Message        string `json:"message"`
+	MetricsCreated uint32 `json:"metricsCreated"`
 }
 
 // Result struct to hold our query results
 type Result struct {
-    TenantID     string
-    ProcessID   uuid.UUID
-    MetricName  string
-    StepName    string
-    Step        uint32
-    MetricValue *string // Pointer to allow for NULL values
+	TenantID    string
+	ProcessID   uuid.UUID
+	MetricName  string
+	StepName    string
+	Step        uint32
+	MetricValue *string // Pointer to allow for NULL values
 }
 
 // This is for return
 // We want an array of objects that contain grafana dataframes
 // For visualizing
 type Field struct {
-    Name   string        `json:"name"`
-    Type   string        `json:"type"`
-    Values []interface{} `json:"values"`
+	Name   string        `json:"name"`
+	Type   string        `json:"type"`
+	Values []interface{} `json:"values"`
 }
 
 type DataFrame []Field
 
 type Panel struct {
-	Title string `json:"title"`
+	Title  string    `json:"title"`
 	Series DataFrame `json:"series"`
 }
 
 type GetModelMetricsResponse struct {
 	Sections map[string][]Panel `json:"sections"`
 }
-
 
 func (a *App) addModelMetrics(tenantID string, req *http.Request) (interface{}, error) {
 	// Extract and validate ProcessID
@@ -93,27 +92,27 @@ func (a *App) addModelMetrics(tenantID string, req *http.Request) (interface{}, 
 }
 
 func extractAndValidateProcessID(req *http.Request) (uuid.UUID, error) {
-    vars := mux.Vars(req)
-    if vars == nil {
-        return uuid.Nil, fmt.Errorf("mux.Vars(req) returned nil")
-    }
+	vars := mux.Vars(req)
+	if vars == nil {
+		return uuid.Nil, fmt.Errorf("mux.Vars(req) returned nil")
+	}
 
-    processIDStr, ok := vars["id"]
-    if !ok {
-        return uuid.Nil, middleware.ErrBadRequest(fmt.Errorf("process ID not provided in URL"))
-    }
+	processIDStr, ok := vars["id"]
+	if !ok {
+		return uuid.Nil, middleware.ErrBadRequest(fmt.Errorf("process ID not provided in URL"))
+	}
 
-    // This case handles when the ID is provided in the URL but is empty
-    if processIDStr == "" {
-        return uuid.Nil, middleware.ErrBadRequest(fmt.Errorf("process ID is empty"))
-    }
+	// This case handles when the ID is provided in the URL but is empty
+	if processIDStr == "" {
+		return uuid.Nil, middleware.ErrBadRequest(fmt.Errorf("process ID is empty"))
+	}
 
-    processID, err := uuid.Parse(processIDStr)
-    if err != nil {
-        return uuid.Nil, middleware.ErrBadRequest(fmt.Errorf("invalid process ID: %w", err))
-    }
+	processID, err := uuid.Parse(processIDStr)
+	if err != nil {
+		return uuid.Nil, middleware.ErrBadRequest(fmt.Errorf("invalid process ID: %w", err))
+	}
 
-    return processID, nil
+	return processID, nil
 }
 
 func (a *App) validateProcessExists(ctx context.Context, processID uuid.UUID) error {
@@ -128,43 +127,43 @@ func (a *App) validateProcessExists(ctx context.Context, processID uuid.UUID) er
 }
 
 func parseAndValidateModelMetricsRequest(req *http.Request) ([]model.ModelMetrics, error) {
-    var metricsData []AddModelMetricsPayload
+	var metricsData []AddModelMetricsPayload
 
-    decoder := json.NewDecoder(req.Body)
+	decoder := json.NewDecoder(req.Body)
 
-    if err := decoder.Decode(&metricsData); err != nil {
-        return nil, middleware.ErrBadRequest(fmt.Errorf("invalid JSON: %v", err))
-    }
+	if err := decoder.Decode(&metricsData); err != nil {
+		return nil, middleware.ErrBadRequest(fmt.Errorf("invalid JSON: %v", err))
+	}
 
-    var metrics []model.ModelMetrics
-    
-    for _, item := range metricsData {
-        for metricName, metricValue := range item.Metrics {
-            metric := model.ModelMetrics{
-                MetricName:  metricName,
-                StepName:   item.StepName,
-                Step:       item.StepValue,
-                MetricValue: metricValue.String(),
-            }
-            
-            if err := validateModelMetric(&metric); err != nil {
-                return nil, middleware.ErrBadRequest(fmt.Errorf("invalid metric: %v", err))
-            }
-            
-            metrics = append(metrics, metric)
-        }
-    }
+	var metrics []model.ModelMetrics
 
-    return metrics, nil
+	for _, item := range metricsData {
+		for metricName, metricValue := range item.Metrics {
+			metric := model.ModelMetrics{
+				MetricName:  metricName,
+				StepName:    item.StepName,
+				Step:        item.StepValue,
+				MetricValue: metricValue.String(),
+			}
+
+			if err := validateModelMetric(&metric); err != nil {
+				return nil, middleware.ErrBadRequest(fmt.Errorf("invalid metric: %v", err))
+			}
+
+			metrics = append(metrics, metric)
+		}
+	}
+
+	return metrics, nil
 }
 
 func validateModelMetric(m *model.ModelMetrics) error {
-    if len(m.MetricName) == 0 || len(m.MetricName) > 32 {
-        return fmt.Errorf("metric name must be between 1 and 32 characters")
-    }
-    if len(m.StepName) == 0 || len(m.StepName) > 32 {
-        return fmt.Errorf("step name must be between 1 and 32 characters")
-    }
+	if len(m.MetricName) == 0 || len(m.MetricName) > 32 {
+		return fmt.Errorf("metric name must be between 1 and 32 characters")
+	}
+	if len(m.StepName) == 0 || len(m.StepName) > 32 {
+		return fmt.Errorf("step name must be between 1 and 32 characters")
+	}
 
 	if m.Step == 0 {
 		return fmt.Errorf("step must be a positive number")
@@ -172,7 +171,7 @@ func validateModelMetric(m *model.ModelMetrics) error {
 	if m.MetricValue == "" {
 		return fmt.Errorf("metric value cannot be empty")
 	}
-    return nil
+	return nil
 }
 
 func (a *App) saveModelMetrics(ctx context.Context, tenantID string, processID uuid.UUID, metricsData []model.ModelMetrics) (int, error) {
@@ -184,7 +183,7 @@ func (a *App) saveModelMetrics(ctx context.Context, tenantID string, processID u
 		return 0, fmt.Errorf("error starting transaction: %w", tx.Error)
 	}
 
-	for _, metric := range(metricsData) {
+	for _, metric := range metricsData {
 		metric.TenantID = tenantID
 		metric.ProcessID = processID
 
@@ -205,19 +204,19 @@ func (a *App) saveModelMetrics(ctx context.Context, tenantID string, processID u
 }
 
 func getCompleteMetrics(ctx context.Context, db *gorm.DB, tenantID string, processes []string) ([]Result, error) {
-    // Convert []string to []uuid.UUID
-    uuidProcesses := make([]uuid.UUID, 0, len(processes))
-    for _, p := range processes {
-        uid, err := uuid.Parse(p)
-        if err != nil {
-            return nil, fmt.Errorf("invalid UUID string: %s", p)
-        }
-        uuidProcesses = append(uuidProcesses, uid)
-    }
+	// Convert []string to []uuid.UUID
+	uuidProcesses := make([]uuid.UUID, 0, len(processes))
+	for _, p := range processes {
+		uid, err := uuid.Parse(p)
+		if err != nil {
+			return nil, fmt.Errorf("invalid UUID string: %s", p)
+		}
+		uuidProcesses = append(uuidProcesses, uid)
+	}
 
-    var results []Result
+	var results []Result
 
-    query := `
+	query := `
 		WITH process_metrics AS (
 			SELECT DISTINCT process_id, metric_name, step_name
 			FROM model_metrics
@@ -256,38 +255,38 @@ func getCompleteMetrics(ctx context.Context, db *gorm.DB, tenantID string, proce
 		ORDER BY ac.step ASC
     `
 
-    err := db.WithContext(ctx).Raw(query, tenantID, uuidProcesses, tenantID, uuidProcesses, tenantID).Scan(&results).Error
-    if err != nil {
-        return nil, fmt.Errorf("error executing query: %v", err)
-    }
-    return results, nil
+	err := db.WithContext(ctx).Raw(query, tenantID, uuidProcesses, tenantID, uuidProcesses, tenantID).Scan(&results).Error
+	if err != nil {
+		return nil, fmt.Errorf("error executing query: %v", err)
+	}
+	return results, nil
 }
 
 func transformMetricsData(results []Result) GetModelMetricsResponse {
-    // Group results by metric_name and step_name
+	// Group results by metric_name and step_name
 	// This makes it easy to separate panels: each []Result is a panel
 	// This "only" leaves turning it into a DataFrame to send to the frontend
-    groupedData := make(map[string]map[string][]Result)
-    for _, r := range results {
-        if _, ok := groupedData[r.MetricName]; !ok {
-            groupedData[r.MetricName] = make(map[string][]Result)
-        }
+	groupedData := make(map[string]map[string][]Result)
+	for _, r := range results {
+		if _, ok := groupedData[r.MetricName]; !ok {
+			groupedData[r.MetricName] = make(map[string][]Result)
+		}
 
 		if _, ok := groupedData[r.MetricName][r.StepName]; !ok {
 			groupedData[r.MetricName][r.StepName] = make([]Result, 0)
 		}
-        groupedData[r.MetricName][r.StepName] = append(groupedData[r.MetricName][r.StepName], r)
-    }
+		groupedData[r.MetricName][r.StepName] = append(groupedData[r.MetricName][r.StepName], r)
+	}
 
 	fmt.Println(groupedData)
 
 	response := GetModelMetricsResponse{
-        Sections: make(map[string][]Panel),
-    }
+		Sections: make(map[string][]Panel),
+	}
 
-    for metricName, stepData := range groupedData {
-		sectionName := "default";
-		displayName := metricName;
+	for metricName, stepData := range groupedData {
+		sectionName := "default"
+		displayName := metricName
 		first, second, hasSectionName := strings.Cut(metricName, "/")
 		if hasSectionName {
 			sectionName = first
@@ -300,14 +299,14 @@ func transformMetricsData(results []Result) GetModelMetricsResponse {
 			// Create empty panel
 
 			newPanel := Panel{
-				Title: displayName,
+				Title:  displayName,
 				Series: make([]Field, 0),
-			};
+			}
 
 			// Create step field
 			stepField := Field{
-				Name: stepName,
-				Type: "number",
+				Name:   stepName,
+				Type:   "number",
 				Values: make([]interface{}, 0),
 			}
 
@@ -325,12 +324,12 @@ func transformMetricsData(results []Result) GetModelMetricsResponse {
 				// Check if the field already exists
 				if _, ok := processFields[row.ProcessID.String()]; !ok {
 					processFields[row.ProcessID.String()] = &Field{
-						Name: row.ProcessID.String(),
-						Type: "number",
+						Name:   row.ProcessID.String(),
+						Type:   "number",
 						Values: make([]interface{}, 0),
 					}
 
-					processOrder = append(processOrder, row.ProcessID.String());
+					processOrder = append(processOrder, row.ProcessID.String())
 				}
 				// Append the value to the field
 				processFields[row.ProcessID.String()].Values = append(processFields[row.ProcessID.String()].Values, row.MetricValue)
@@ -352,9 +351,9 @@ func transformMetricsData(results []Result) GetModelMetricsResponse {
 		}
 
 		response.Sections[sectionName] = panels
-    }
+	}
 
-    return response
+	return response
 }
 
 func (a *App) getModelMetrics(tenantID string, req *http.Request) (interface{}, error) {
@@ -366,12 +365,12 @@ func (a *App) getModelMetrics(tenantID string, req *http.Request) (interface{}, 
 		return nil, middleware.ErrBadRequest(fmt.Errorf("invalid JSON: %v", err))
 	}
 
-    results, err := getCompleteMetrics(req.Context(), a.db(req.Context()), tenantID, processes)
-    if err != nil {
-        return nil, fmt.Errorf("error getting complete metrics: %w", err)
-    }
+	results, err := getCompleteMetrics(req.Context(), a.db(req.Context()), tenantID, processes)
+	if err != nil {
+		return nil, fmt.Errorf("error getting complete metrics: %w", err)
+	}
 
-	transformedMetricsData := transformMetricsData(results);
+	transformedMetricsData := transformMetricsData(results)
 
-    return transformedMetricsData, nil  // Return results instead of nil
+	return transformedMetricsData, nil // Return results instead of nil
 }

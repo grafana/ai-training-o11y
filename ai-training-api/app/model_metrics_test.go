@@ -46,58 +46,58 @@ func setupTestDB(t *testing.T) (*gorm.DB, func()) {
 }
 
 func TestExtractAndValidateProcessID(t *testing.T) {
-    tests := []struct {
-        name           string
-        url            string
-        expectedID     uuid.UUID
-        expectedErrMsg string
-    }{
-        {
-            name:       "Valid UUID",
-            url:        "/process/123e4567-e89b-12d3-a456-426614174000/model-metrics",
-            expectedID: uuid.MustParse("123e4567-e89b-12d3-a456-426614174000"),
-        },
-        {
-            name:           "Invalid UUID",
-            url:            "/process/invalid-uuid/model-metrics",
-            expectedErrMsg: "invalid process ID",
-        },
-        {
-            name:           "Empty ID",
-            url:            "/process//model-metrics",
-            expectedErrMsg: "process ID is empty",
-        },
-        {
-            name:           "No ID in URL",
-            url:            "/process/model-metrics",
-            expectedErrMsg: "process ID not provided in URL",
-        },
-    }
+	tests := []struct {
+		name           string
+		url            string
+		expectedID     uuid.UUID
+		expectedErrMsg string
+	}{
+		{
+			name:       "Valid UUID",
+			url:        "/process/123e4567-e89b-12d3-a456-426614174000/model-metrics",
+			expectedID: uuid.MustParse("123e4567-e89b-12d3-a456-426614174000"),
+		},
+		{
+			name:           "Invalid UUID",
+			url:            "/process/invalid-uuid/model-metrics",
+			expectedErrMsg: "invalid process ID",
+		},
+		{
+			name:           "Empty ID",
+			url:            "/process//model-metrics",
+			expectedErrMsg: "process ID is empty",
+		},
+		{
+			name:           "No ID in URL",
+			url:            "/process/model-metrics",
+			expectedErrMsg: "process ID not provided in URL",
+		},
+	}
 
-    for _, tt := range tests {
-        t.Run(tt.name, func(t *testing.T) {
-            router := mux.NewRouter()
-            router.HandleFunc("/process/{id}/model-metrics", func(w http.ResponseWriter, r *http.Request) {
-                processID, err := extractAndValidateProcessID(r)
-                
-                if tt.expectedErrMsg != "" {
-                    assert.Error(t, err)
-                    assert.Contains(t, err.Error(), tt.expectedErrMsg)
-                } else {
-                    assert.NoError(t, err)
-                    assert.Equal(t, tt.expectedID, processID)
-                }
-            }).Methods("POST")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			router := mux.NewRouter()
+			router.HandleFunc("/process/{id}/model-metrics", func(w http.ResponseWriter, r *http.Request) {
+				processID, err := extractAndValidateProcessID(r)
 
-            req, err := http.NewRequest("POST", tt.url, nil)
-            if err != nil {
-                t.Fatalf("Failed to create request: %v", err)
-            }
+				if tt.expectedErrMsg != "" {
+					assert.Error(t, err)
+					assert.Contains(t, err.Error(), tt.expectedErrMsg)
+				} else {
+					assert.NoError(t, err)
+					assert.Equal(t, tt.expectedID, processID)
+				}
+			}).Methods("POST")
 
-            rr := httptest.NewRecorder()
-            router.ServeHTTP(rr, req)
-        })
-    }
+			req, err := http.NewRequest("POST", tt.url, nil)
+			if err != nil {
+				t.Fatalf("Failed to create request: %v", err)
+			}
+
+			rr := httptest.NewRecorder()
+			router.ServeHTTP(rr, req)
+		})
+	}
 }
 
 func TestValidateProcessExists(t *testing.T) {
@@ -110,8 +110,8 @@ func TestValidateProcessExists(t *testing.T) {
 
 	app := &testApp{
 		App: App{
-			_db:   db,
-			dbMux: &sync.Mutex{},
+			_db:    db,
+			dbMux:  &sync.Mutex{},
 			logger: log.NewLogfmtLogger(log.NewSyncWriter(os.Stderr)),
 		},
 	}
@@ -194,7 +194,7 @@ func TestParseAndValidateModelMetricsRequest(t *testing.T) {
 					StepValue: 1,
 					Metrics: map[string]json.Number{
 						"accuracy": "0.95",
-						"loss":    "0.05",
+						"loss":     "0.05",
 					},
 				},
 			},
@@ -339,13 +339,13 @@ func TestTransformMetricsData(t *testing.T) {
 						Title: "accuracy",
 						Series: DataFrame{
 							{
-								Name: "Step",
-								Type: "number",
+								Name:   "Step",
+								Type:   "number",
 								Values: []interface{}{uint32(1)},
 							},
 							{
-								Name: "55555555-5555-5555-5555-555555555555",
-								Type: "number",
+								Name:   "55555555-5555-5555-5555-555555555555",
+								Type:   "number",
 								Values: []interface{}{strPtr("0.9")},
 							},
 						},
@@ -364,10 +364,10 @@ func TestTransformMetricsData(t *testing.T) {
 		},
 	}
 
-    t.Run(testCase.name, func(t *testing.T) {
-        result := transformMetricsData(testCase.input)
-        if diff := cmp.Diff(testCase.expected, result); diff != "" {
-            t.Errorf("transformMetricsData() mismatch (-want +got):\n%s", diff)
-        }
-    })
+	t.Run(testCase.name, func(t *testing.T) {
+		result := transformMetricsData(testCase.input)
+		if diff := cmp.Diff(testCase.expected, result); diff != "" {
+			t.Errorf("transformMetricsData() mismatch (-want +got):\n%s", diff)
+		}
+	})
 }

@@ -193,23 +193,23 @@ func (a *App) deleteProcess(tenantID string, req *http.Request) (interface{}, er
 // listProcess returns a list of all processes.
 // It limits the number of processes returned to listProcessLimit.
 func (a *App) listProcess(tenantID string, req *http.Request) (interface{}, error) {
-    var processes []model.Process
-    
-    result := a.db(req.Context()).
-        Where("tenant_id = ?", tenantID).
-        Order("start_time DESC").
-        Limit(listProcessLimit).
-        Find(&processes)
+	var processes []model.Process
 
-    if result.Error != nil {
-        if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-            return nil, middleware.ErrNotFound(result.Error)
-        }
-        return nil, result.Error
-    }
+	result := a.db(req.Context()).
+		Where("tenant_id = ?", tenantID).
+		Order("start_time DESC").
+		Limit(listProcessLimit).
+		Find(&processes)
 
-    level.Info(a.logger).Log("msg", "found processes", "tenantID", tenantID, "len_processes", len(processes))
-    return processes, nil
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return nil, middleware.ErrNotFound(result.Error)
+		}
+		return nil, result.Error
+	}
+
+	level.Info(a.logger).Log("msg", "found processes", "tenantID", tenantID, "len_processes", len(processes))
+	return processes, nil
 }
 
 // updateProcessMetadata updates the metadata of a process.
