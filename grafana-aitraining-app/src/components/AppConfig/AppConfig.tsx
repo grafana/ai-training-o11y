@@ -1,5 +1,5 @@
 import React, { useState, useEffect, ChangeEvent } from 'react';
-import { Button, Field, Input, useStyles2, FieldSet, SecretInput, Select } from '@grafana/ui';
+import { Alert, Button, Field, Input, useStyles2, FieldSet, SecretInput, Select } from '@grafana/ui';
 import { PluginConfigPageProps, AppPluginMeta, PluginMeta, GrafanaTheme2, SelectableValue } from '@grafana/data';
 import { getBackendSrv, locationService } from '@grafana/runtime';
 import { css } from '@emotion/css';
@@ -79,13 +79,12 @@ export const AppConfig = ({ plugin }: Props) => {
     setState((prevState) => {
       // Only mark as dirty if the value has changed
       let isDirty = false;
-    
+
       // It either is or is not set
       if (field !== 'isMetadataTokenSet') {
-        isDirty = value !== originalValues[field as keyof typeof originalValues] && 
-                  typeof value === 'string' && 
-                  value.length > 0;
+        isDirty = value !== originalValues[field as keyof typeof originalValues] && typeof value === 'string';
       }
+
       return {
         ...prevState,
         [field]: value,
@@ -96,111 +95,120 @@ export const AppConfig = ({ plugin }: Props) => {
       };
     });
   };
-  
+
   // Use this function for all field changes
   const onChangeMetadataToken = (event: ChangeEvent<HTMLInputElement>) => {
     onChangeField('metadataToken', event.target.value.trim());
   };
-  
+
   const onChangeMetadataUrl = (event: ChangeEvent<HTMLInputElement>) => {
     onChangeField('metadataUrl', event.target.value.trim());
   };
-  
+
   const onChangeLokiDatasource = (option: SelectableValue<string>) => {
     onChangeField('lokiDatasourceName', option.value || '');
   };
-  
+
   const onChangeMimirDatasource = (option: SelectableValue<string>) => {
     onChangeField('mimirDatasourceName', option.value || '');
   };
-  
+
   const onChangeStackId = (event: ChangeEvent<HTMLInputElement>) => {
     const value = event.target.value.trim();
-    if (/^\d*$/.test(value)) { // This regex ensures only digits are allowed
+    if (/^\d*$/.test(value)) {
+      // This regex ensures only digits are allowed
       onChangeField('stackId', value);
     }
   };
 
   // Function to check if the form should be enabled
-const isFormEnabled = () => {
-  return Object.entries(state.dirty).some(([field, isDirty]) => 
-    field !== 'isMetadataTokenSet' && isDirty
-  );
-};
-
-const handleSaveClick = () => {
-  const isJsonDataDirty = ['metadataUrl', 'lokiDatasourceName', 'mimirDatasourceName', 'stackId'].some(
-    field => state.dirty[field as keyof typeof state.dirty]
-  );
-
-  const isSecureJsonDataDirty = state.dirty.metadataToken;
-
-  const updateData: any = {
-    enabled,
-    pinned,
+  const isFormEnabled = () => {
+    return Object.entries(state.dirty).some(([field, isDirty]) => field !== 'isMetadataTokenSet' && isDirty);
   };
 
-  if (isJsonDataDirty) {
-    updateData.jsonData = {
-      metadataUrl: state.metadataUrl,
-      lokiDatasourceName: state.lokiDatasourceName,
-      mimirDatasourceName: state.mimirDatasourceName,
-      stackId: state.stackId,
-    };
-  }
+  const handleSaveClick = () => {
+    const isJsonDataDirty = ['metadataUrl', 'lokiDatasourceName', 'mimirDatasourceName', 'stackId'].some(
+      (field) => state.dirty[field as keyof typeof state.dirty]
+    );
 
-  if (isSecureJsonDataDirty) {
-    updateData.secureJsonData = {
-      metadataToken: state.metadataToken,
-    };
-  }
+    const isSecureJsonDataDirty = state.dirty.metadataToken;
 
-  updatePluginAndReload(plugin.meta.id, updateData);
-};
+    const updateData: any = {
+      enabled,
+      pinned,
+    };
+
+    if (isJsonDataDirty) {
+      updateData.jsonData = {
+        metadataUrl: state.metadataUrl,
+        lokiDatasourceName: state.lokiDatasourceName,
+        mimirDatasourceName: state.mimirDatasourceName,
+        stackId: state.stackId,
+      };
+    }
+
+    if (isSecureJsonDataDirty) {
+      updateData.secureJsonData = {
+        metadataToken: state.metadataToken,
+      };
+    }
+
+    updatePluginAndReload(plugin.meta.id, updateData);
+  };
+
+  const hasEmptyValues =
+    (state.metadataToken ?? '') === '' ||
+    (state.metadataUrl ?? '') === '' ||
+    (state.lokiDatasourceName ?? '') === '' ||
+    (state.mimirDatasourceName ?? '') === '' ||
+    (state.stackId ?? '') === '';
+
+  const lokiDatasources = datasources.filter((ds) => ds.type === 'loki');
+  const prometheusDatasources = datasources.filter((ds) => ds.type === 'prometheus');
 
   return (
     <div data-testid={testIds.appConfig.container}>
       {/* ENABLE / DISABLE PLUGIN */}
       <FieldSet label="Enable / Disable">
         {!enabled && (
-            <>
-              <div className={s.colorWeak}>The plugin is currently not enabled.</div>
-              <Button
-                className={s.marginTop}
-                variant="primary"
-                onClick={() =>
-                  updatePluginAndReload(plugin.meta.id, {
-                    enabled: true,
-                    pinned: true,
-                    jsonData,
-                  })
-                }
-              >
-                Enable plugin
-              </Button>
-            </>
-          )}
+          <>
+            <div className={s.colorWeak}>The plugin is currently not enabled.</div>
+            <Button
+              className={s.marginTop}
+              variant="primary"
+              onClick={() =>
+                updatePluginAndReload(plugin.meta.id, {
+                  enabled: true,
+                  pinned: true,
+                  jsonData,
+                })
+              }
+            >
+              Enable plugin
+            </Button>
+          </>
+        )}
 
-          {/* Disable the plugin */}
-          {enabled && (
-            <>
-              <div className={s.colorWeak}>The plugin is currently enabled.</div>
-              <Button
-                className={s.marginTop}
-                variant="destructive"
-                onClick={() =>
-                  updatePluginAndReload(plugin.meta.id, {
-                    enabled: false,
-                    pinned: false,
-                    jsonData,
-                  })
-                }
-              >
-                Disable plugin
-              </Button>
-            </>
-          )}
-        </FieldSet>
+        {/* Disable the plugin */}
+        {enabled && (
+          <>
+            <div className={s.colorWeak}>The plugin is currently enabled.</div>
+            <Button
+              className={s.marginTop}
+              variant="destructive"
+              onClick={() =>
+                updatePluginAndReload(plugin.meta.id, {
+                  enabled: false,
+                  pinned: false,
+                  jsonData,
+                })
+              }
+            >
+              Disable plugin
+            </Button>
+          </>
+        )}
+      </FieldSet>
 
       {/* CUSTOM SETTINGS */}
       <FieldSet label="API Settings" className={s.marginTopXl}>
@@ -241,7 +249,7 @@ const handleSaveClick = () => {
             data-testid={testIds.appConfig.lokiDatasource}
             value={state.lokiDatasourceName}
             onChange={onChangeLokiDatasource}
-            options={datasources}
+            options={lokiDatasources}
             placeholder="Select Loki datasource"
           />
         </Field>
@@ -254,7 +262,7 @@ const handleSaveClick = () => {
             data-testid={testIds.appConfig.mimirDatasource}
             value={state.mimirDatasourceName}
             onChange={onChangeMimirDatasource}
-            options={datasources}
+            options={prometheusDatasources}
             placeholder="Select Mimir datasource"
           />
         </Field>
@@ -270,6 +278,21 @@ const handleSaveClick = () => {
             onChange={onChangeStackId}
           />
         </Field>
+
+        {hasEmptyValues ? (
+          <Alert severity="info" title="Required fields missing">
+            The following fields are required for this plugin to work:
+            <ul className={s.missingList}>
+              {(state.metadataToken ?? '') === '' ? <li>Metadata Service Token</li> : null}
+              {(state.metadataUrl ?? '') === '' ? <li>Metadata URL</li> : null}
+              {(state.lokiDatasourceName ?? '') === '' ? <li>Loki Datasource</li> : null}
+              {(state.mimirDatasourceName ?? '') === '' ? <li>Mimir Datasource</li> : null}
+              {(state.stackId ?? '') === '' ? <li>Stack ID</li> : null}
+            </ul>
+            You may save your current settings, but until these fields are filled in, the plugin will not work as
+            expected.
+          </Alert>
+        ) : null}
 
         <div className={s.marginTop}>
           <Button
@@ -294,6 +317,8 @@ const getDatasources = async (): Promise<Array<SelectableValue<string>>> => {
     return response.map((ds: any) => ({
       label: ds.name,
       value: ds.name,
+      type: ds.type,
+      uid: ds.uid,
     }));
   } catch (error) {
     console.error('Error fetching datasources:', error);
@@ -310,6 +335,13 @@ const getStyles = (theme: GrafanaTheme2) => ({
   `,
   marginTopXl: css`
     margin-top: ${theme.spacing(6)};
+  `,
+  missingList: css`
+    list-style-type: circle;
+    margin-bottom: 15px;
+    & li {
+      margin-left: 20px;
+    }
   `,
 });
 
