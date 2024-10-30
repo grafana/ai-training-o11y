@@ -45,20 +45,20 @@ func (a *App) registerNewProcess(tenantID string, req *http.Request) (interface{
 	// Register a new process.
 	process := &model.Process{}
 	process.ID = uuid.New()
-	level.Info(a.logger).Log("msg", "generated new UUID", "process_id", process.ID, "uuid_length", len(process.ID.String()))
+	level.Debug(a.logger).Log("msg", "generated new UUID", "process_id", process.ID, "uuid_length", len(process.ID.String()))
 
 	process.TenantID = tenantID
 	process.StartTime = time.Now()
 	process.Status = "running"
 
 	// Store process in DB.
-	level.Info(a.logger).Log("msg", "attempting to create process", "process_id", process.ID, "tenant_id", tenantID)
+	level.Debug(a.logger).Log("msg", "attempting to create process", "process_id", process.ID, "tenant_id", tenantID)
 	err := a.db(req.Context()).Model(&model.Process{}).Create(process).Error
 	if err != nil {
 		level.Error(a.logger).Log("msg", "failed to create process", "process_id", process.ID, "error", err)
 		return nil, fmt.Errorf("error creating process: %w", err)
 	}
-	level.Info(a.logger).Log("msg", "created process in DB", "process_id", process.ID)
+	level.Debug(a.logger).Log("msg", "created process in DB", "process_id", process.ID)
 
 	// Read and parse request body.
 	body, err := io.ReadAll(req.Body)
@@ -90,7 +90,7 @@ func (a *App) registerNewProcess(tenantID string, req *http.Request) (interface{
 
 		case "group":
 			groupName := value.(string)
-			level.Info(a.logger).Log("msg", "processing group", "process_id", process.ID, "group_name", groupName)
+			level.Debug(a.logger).Log("msg", "processing group", "process_id", process.ID, "group_name", groupName)
 
 			var group model.Group
 			err = a.db(req.Context()).
@@ -100,7 +100,7 @@ func (a *App) registerNewProcess(tenantID string, req *http.Request) (interface{
 				}).First(&group).Error
 
 			if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-				level.Info(a.logger).Log("msg", "creating new group", "process_id", process.ID, "group_name", groupName)
+				level.Debug(a.logger).Log("msg", "creating new group", "process_id", process.ID, "group_name", groupName)
 				groupID := uuid.New()
 				err = a.db(req.Context()).
 					Model(&model.Group{}).
@@ -114,15 +114,15 @@ func (a *App) registerNewProcess(tenantID string, req *http.Request) (interface{
 					return nil, fmt.Errorf("error creating group: %w", err)
 				}
 				process.GroupID = &groupID
-				level.Info(a.logger).Log("msg", "created new group", "process_id", process.ID, "group_id", groupID)
+				level.Debug(a.logger).Log("msg", "created new group", "process_id", process.ID, "group_id", groupID)
 			} else {
 				process.GroupID = &group.ID
-				level.Info(a.logger).Log("msg", "using existing group", "process_id", process.ID, "group_id", group.ID)
+				level.Debug(a.logger).Log("msg", "using existing group", "process_id", process.ID, "group_id", group.ID)
 			}
 
 		case "user_metadata":
 			metadata := value.(map[string]interface{})
-			level.Info(a.logger).Log("msg", "processing metadata", "process_id", process.ID, "metadata_keys", len(metadata))
+			level.Debug(a.logger).Log("msg", "processing metadata", "process_id", process.ID, "metadata_keys", len(metadata))
 
 			dataMap, err := flatten.Flatten(metadata, "", flatten.DotStyle)
 			if err != nil {
@@ -159,7 +159,7 @@ func (a *App) registerNewProcess(tenantID string, req *http.Request) (interface{
 	}
 
 	// Final update
-	level.Info(a.logger).Log("msg", "updating process", "process_id", process.ID,
+	level.Debug(a.logger).Log("msg", "updating process", "process_id", process.ID,
 		"uuid_length", len(process.ID.String()))
 	err = a.db(req.Context()).Model(&model.Process{ID: process.ID}).Updates(process).Error
 	if err != nil {
