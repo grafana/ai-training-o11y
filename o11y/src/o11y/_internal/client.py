@@ -38,7 +38,7 @@ class Client:
 
 
     def _parse_login_string(self, login_string: str) -> ParseResult:
-        parsed_url = urlparse(login_string)
+        parsed_url = urlparse(login_string.strip('/'))
         if not parsed_url.hostname:
             raise ValueError("Invalid login string format. Could not parse hostname from the URL.")
         if parsed_url.scheme != "http" and parsed_url.scheme != "https":
