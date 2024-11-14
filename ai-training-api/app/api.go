@@ -45,48 +45,62 @@ func (a *App) registerNewProcess(tenantID string, req *http.Request) (interface{
 	// Register a new process.
 	process := &model.Process{}
 	process.ID = uuid.New()
+	level.Debug(a.logger).Log("msg", "generated new UUID", "process_id", process.ID, "uuid_length", len(process.ID.String()))
+
 	process.TenantID = tenantID
 	process.StartTime = time.Now()
-	process.Status = "running" // Set default status to "running"
+	process.Status = "running"
 
 	// Store process in DB.
+	level.Debug(a.logger).Log("msg", "attempting to create process", "process_id", process.ID, "tenant_id", tenantID)
 	err := a.db(req.Context()).Model(&model.Process{}).Create(process).Error
 	if err != nil {
+		level.Error(a.logger).Log("msg", "failed to create process", "process_id", process.ID, "error", err)
 		return nil, fmt.Errorf("error creating process: %w", err)
 	}
-	level.Info(a.logger).Log("msg", "registered new process", "process_id", process.ID)
+	level.Debug(a.logger).Log("msg", "created process in DB", "process_id", process.ID)
 
 	// Read and parse request body.
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
+		level.Error(a.logger).Log("msg", "failed to read request body", "process_id", process.ID, "error", err)
 		return nil, middleware.ErrBadRequest(err)
 	}
 	defer req.Body.Close()
+
+	level.Debug(a.logger).Log("msg", "request body read", "process_id", process.ID, "body_length", len(body))
+
 	var data = map[string]interface{}{}
 	err = json.Unmarshal(body, &data)
 	if err != nil {
+		level.Error(a.logger).Log("msg", "failed to unmarshal request body", "process_id", process.ID, "error", err)
 		return nil, middleware.ErrBadRequest(err)
 	}
 
-	// There are several fields in the request body, some of which are metadata
-	// while others contain project and group information. We need to store the
-	// metadata in a separate table.
+	level.Debug(a.logger).Log("msg", "parsed request body", "process_id", process.ID, "keys", fmt.Sprintf("%v", keys(data)))
+
+	// Process each field
 	for key, value := range data {
+		level.Debug(a.logger).Log("msg", "processing field", "process_id", process.ID, "key", key, "value_type", fmt.Sprintf("%T", value))
+
 		switch key {
 		case "project":
 			process.Project = value.(string)
-			continue
+			level.Debug(a.logger).Log("msg", "set project", "process_id", process.ID, "project", process.Project)
+
 		case "group":
-			// Check if the group already exists.
 			groupName := value.(string)
+			level.Debug(a.logger).Log("msg", "processing group", "process_id", process.ID, "group_name", groupName)
+
 			var group model.Group
 			err = a.db(req.Context()).
 				Where(&model.Group{
 					TenantID: tenantID,
 					Name:     groupName,
 				}).First(&group).Error
+
 			if err != nil && errors.Is(err, gorm.ErrRecordNotFound) {
-				// If the group does not exist, create a new group.
+				level.Debug(a.logger).Log("msg", "creating new group", "process_id", process.ID, "group_name", groupName)
 				groupID := uuid.New()
 				err = a.db(req.Context()).
 					Model(&model.Group{}).
@@ -96,23 +110,33 @@ func (a *App) registerNewProcess(tenantID string, req *http.Request) (interface{
 						Name:     value.(string),
 					}).Error
 				if err != nil {
+					level.Error(a.logger).Log("msg", "failed to create group", "process_id", process.ID, "error", err)
 					return nil, fmt.Errorf("error creating group: %w", err)
 				}
 				process.GroupID = &groupID
+				level.Debug(a.logger).Log("msg", "created new group", "process_id", process.ID, "group_id", groupID)
 			} else {
 				process.GroupID = &group.ID
+				level.Debug(a.logger).Log("msg", "using existing group", "process_id", process.ID, "group_id", group.ID)
 			}
-			continue
+
 		case "user_metadata":
-			// Store metadata information in the Metadata table.
 			metadata := value.(map[string]interface{})
-			// Flatten JSON body into key-value pairs and store in Metadata table.
+			level.Debug(a.logger).Log("msg", "processing metadata", "process_id", process.ID, "metadata_keys", len(metadata))
+
 			dataMap, err := flatten.Flatten(metadata, "", flatten.DotStyle)
 			if err != nil {
+				level.Error(a.logger).Log("msg", "failed to flatten metadata", "process_id", process.ID, "error", err)
 				return nil, fmt.Errorf("error flattening metadata: %w", err)
 			}
+
+			level.Debug(a.logger).Log("msg", "flattened metadata", "process_id", process.ID, "flattened_keys", len(dataMap))
+
 			for mk, mv := range dataMap {
 				valueType, valueBytes := model.MarshalMetadataValue(mv)
+				level.Debug(a.logger).Log("msg", "creating metadata entry", "process_id", process.ID,
+					"key", mk, "value_type", valueType)
+
 				err = a.db(req.Context()).
 					Model(&model.MetadataKV{}).
 					Create(&model.MetadataKV{
@@ -123,20 +147,35 @@ func (a *App) registerNewProcess(tenantID string, req *http.Request) (interface{
 						ProcessID: process.ID,
 					}).Error
 				if err != nil {
+					level.Error(a.logger).Log("msg", "failed to create metadata", "process_id", process.ID,
+						"key", mk, "error", err)
 					return nil, fmt.Errorf("error creating metadata: %w", err)
 				}
 			}
-			continue
+
 		default:
-			level.Error(a.logger).Log("msg", "unknown key in request body", "key", key)
+			level.Error(a.logger).Log("msg", "unknown key in request body", "process_id", process.ID, "key", key)
 		}
 	}
 
-	// Update the process in the DB.
+	// Final update
+	level.Debug(a.logger).Log("msg", "updating process", "process_id", process.ID,
+		"uuid_length", len(process.ID.String()))
 	err = a.db(req.Context()).Model(&model.Process{ID: process.ID}).Updates(process).Error
+	if err != nil {
+		level.Error(a.logger).Log("msg", "failed to update process", "process_id", process.ID, "error", err)
+	}
 
-	// Return the process ID.
 	return process, err
+}
+
+// Helper function to get map keys for logging
+func keys(m map[string]interface{}) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 // registerNewProcess registers a new Process and returns a UUID.
