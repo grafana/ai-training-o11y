@@ -27,17 +27,17 @@ It's not a supported product (yet), though it can become one if there's enough i
 
 The easiest way to try it out is to tell us you'd like to use this in Grafana Cloud; we can install the plugin to your instance.
 
-You can reach us via your support contact in Grafana Cloud, or in the [https://grafana.slack.com/archives/C02GWJX681J](#machine-learning channel in Grafana Community Slack).
+You can reach us via your support contact in Grafana Cloud, or in the [#machine-learning](https://grafana.slack.com/archives/C02GWJX681J) channel in Grafana Community Slack.
 
 Or feel free to try it out locally! Raise issues in the repo as needed, or raise PRs.
 
 ## Layout of this repo
 
 - Project root contains anything necessary to spin up a dev environment to test end-to-end
-- `.config/` has config files for the dev environment
-- `o11y/` is the python exporter
-- `ai-training-api/` contains the metadata (and maybe proxy) service and any necessary files for mysql (specifying database configuration, especially)
-- `grafana-aitraining-app/` contains the grafana plugin
+- `.config/` has config files for the dev environment.
+- `o11y/` is the python exporter used to instrument Jupyter notebooks/other python apps.
+- `ai-training-api/` contains the backend service service used to store and query data from the ML experiments.
+- `grafana-aitraining-app/` contains the grafana plugin used to visualise data within Grafana.
 
 ## Development
 
