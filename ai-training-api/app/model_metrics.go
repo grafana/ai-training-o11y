@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -348,7 +349,14 @@ func transformMetricsData(results []Result) GetModelMetricsResponse {
 			panels = append(panels, newPanel)
 		}
 
-		response.Sections[sectionName] = panels
+		response.Sections[sectionName] = append(response.Sections[sectionName], panels...)
+	}
+
+	// Sort all response sections so the results are consistent when navigating to/from the page.
+	for _, section := range response.Sections {
+		slices.SortFunc(section, func(a, b Panel) int {
+			return strings.Compare(a.Title, b.Title)
+		})
 	}
 
 	return response
