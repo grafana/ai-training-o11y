@@ -348,7 +348,7 @@ func transformMetricsData(results []Result) GetModelMetricsResponse {
 			panels = append(panels, newPanel)
 		}
 
-		response.Sections[sectionName] = panels
+		response.Sections[sectionName] = append(response.Sections[sectionName], panels...)
 	}
 
 	return response
