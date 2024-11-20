@@ -304,8 +304,10 @@ func TestTransformMetricsData(t *testing.T) {
 		name: "Mixed metrics with different sections and step names",
 		input: []Result{
 			{TenantID: "1", ProcessID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), MetricName: "training/accuracy", StepName: "Epoch", Step: 1, MetricValue: strPtr("0.75")},
+			{TenantID: "1", ProcessID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), MetricName: "training/secondary_measure", StepName: "Epoch", Step: 1, MetricValue: strPtr("1.0")},
 			{TenantID: "1", ProcessID: uuid.MustParse("22222222-2222-2222-2222-222222222222"), MetricName: "training/accuracy", StepName: "Epoch", Step: 1, MetricValue: strPtr("0.70")},
 			{TenantID: "1", ProcessID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), MetricName: "training/accuracy", StepName: "Epoch", Step: 2, MetricValue: strPtr("0.80")},
+			{TenantID: "1", ProcessID: uuid.MustParse("11111111-1111-1111-1111-111111111111"), MetricName: "training/secondary_measure", StepName: "Epoch", Step: 2, MetricValue: strPtr("2.0")},
 			{TenantID: "1", ProcessID: uuid.MustParse("22222222-2222-2222-2222-222222222222"), MetricName: "training/accuracy", StepName: "Epoch", Step: 2, MetricValue: strPtr("0.78")},
 			{TenantID: "1", ProcessID: uuid.MustParse("33333333-3333-3333-3333-333333333333"), MetricName: "evaluation/f1_score", StepName: "Step", Step: 1, MetricValue: strPtr("0.65")},
 			{TenantID: "1", ProcessID: uuid.MustParse("33333333-3333-3333-3333-333333333333"), MetricName: "evaluation/f1_score", StepName: "Step", Step: 2, MetricValue: strPtr("0.70")},
@@ -322,6 +324,13 @@ func TestTransformMetricsData(t *testing.T) {
 							{Name: "Epoch", Type: "number", Values: []interface{}{uint32(1), uint32(2)}},
 							{Name: "11111111-1111-1111-1111-111111111111", Type: "number", Values: []interface{}{strPtr("0.75"), strPtr("0.80")}},
 							{Name: "22222222-2222-2222-2222-222222222222", Type: "number", Values: []interface{}{strPtr("0.70"), strPtr("0.78")}},
+						},
+					},
+					{
+						Title: "secondary_measure",
+						Series: DataFrame{
+							{Name: "Epoch", Type: "number", Values: []interface{}{uint32(1), uint32(2)}},
+							{Name: "11111111-1111-1111-1111-111111111111", Type: "number", Values: []interface{}{strPtr("1.0"), strPtr("2.0")}},
 						},
 					},
 				},
