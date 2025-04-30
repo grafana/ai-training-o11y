@@ -21,13 +21,15 @@ jobs:
 
       - name: Check out code
         uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - name:  Image tag
         id: image-tag
         run: echo "version=$(./tools/image-tag)" >> $GITHUB_OUTPUT
 
       - name: Build and push to Docker Hub
-        uses: grafana/shared-workflows/actions/push-to-gar-docker@main
+        uses: grafana/shared-workflows/actions/push-to-gar-docker@62f8ddaa78b23147b22ba6a38df2b97963dab4b3
         id: push-to-gar
         with:
           platforms: linux/amd64,linux/arm64

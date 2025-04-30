@@ -78,7 +78,7 @@ runs:
 
     - name: Test backend
       if: steps.check-for-backend.outputs.has-backend == 'true'
-      uses: magefile/mage-action@v3
+      uses: magefile/mage-action@6f50bbb8ea47d56e62dee92392788acbc8192d0b
       with:
         version: latest
         args: coverage
@@ -86,7 +86,7 @@ runs:
 
     - name: Build backend
       if: steps.check-for-backend.outputs.has-backend == 'true'
-      uses: magefile/mage-action@v3
+      uses: magefile/mage-action@6f50bbb8ea47d56e62dee92392788acbc8192d0b
       with:
         version: latest
         args: buildAll
@@ -165,7 +165,7 @@ runs:
       shell: bash
 
     - name: Create Github release
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@da05d552573ad5aba039eaac05058a918a7bf631
       with:
         generate_release_notes: true
         token: ${{ inputs.token }}

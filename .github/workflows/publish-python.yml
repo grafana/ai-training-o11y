@@ -12,12 +12,17 @@ on:
           - 'true'
           - 'false'
 
+permissions:
+  contents: read
+
 jobs:
   build_and_publish:
     name: Build and publish Python distribution
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+      with:
+        persist-credentials: false
 
     - name: Set up Python
       uses: actions/setup-python@v4
